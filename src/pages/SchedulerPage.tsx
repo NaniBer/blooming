@@ -6,7 +6,7 @@ interface SchedulerPageProps {
 
 interface WorkoutDay {
   day: string
-  type: 'upper' | 'lower' | 'mix' | 'cardio'
+  type: 'upper' | 'lower' | 'fullBody' | 'cardio'
   exercises: string[]
   completed: boolean
 }
@@ -16,28 +16,13 @@ interface WeeklyPlan {
   workouts: WorkoutDay[]
   startOfWeek: string
   weekNumber: number
-  activeSet: 'setA' | 'setB' | 'setC'
 }
 
-const EXERCISE_SETS = {
-  setA: {
-    upper: ['Bench Press', 'Overhead Press', 'Pull Up'],
-    lower: ['Squat', 'Leg Press', 'Deadlift'],
-    mix: ['Bench Press', 'Cable Fly', 'Treadmill'],
-    cardio: ['Treadmill', 'Cycling', 'Rowing'],
-  },
-  setB: {
-    upper: ['Incline Bench', 'Lateral Raise', 'Lat Pulldown'],
-    lower: ['Lunges', 'Leg Extension', 'Romanian Deadlift'],
-    mix: ['Incline Bench', 'Tricep Dips', 'Cycling'],
-    cardio: ['Elliptical', 'Swimming', 'Stair Climber'],
-  },
-  setC: {
-    upper: ['Dumbbell Press', 'Face Pulls', 'Rows'],
-    lower: ['Goblet Squat', 'Calf Raises', 'Hip Thrust'],
-    mix: ['Dumbbell Press', 'Bicep Curls', 'Elliptical'],
-    cardio: ['Jump Rope', 'Boxing', 'HIIT'],
-  },
+const EXERCISES = {
+  upper: ['Bench Press', 'Overhead Press', 'Pull Up'],
+  lower: ['Squat', 'Leg Press', 'Deadlift'],
+  fullBody: ['Squat', 'Bench Press', 'Row'],
+  cardio: ['Treadmill', 'Cycling', 'Rowing'],
 }
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -46,9 +31,8 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
   const [selectedDays, setSelectedDays] = useState<string[]>([])
   const [hasPlan, setHasPlan] = useState(false)
   const [currentPlan, setCurrentPlan] = useState<WeeklyPlan | null>(null)
-  const [activeSet, setActiveSet] = useState<'setA' | 'setB' | 'setC'>('setA')
-  const [selectedTypes, setSelectedTypes] = useState<Record<string, 'upper' | 'lower' | 'mix' | 'cardio'>>({})
-  const [defaultType, setDefaultType] = useState<'upper' | 'lower' | 'mix' | 'cardio'>('upper')
+  const [selectedTypes, setSelectedTypes] = useState<Record<string, 'upper' | 'lower' | 'fullBody' | 'cardio'>>({})
+
 
   useEffect(() => {
     const saved = localStorage.getItem('weeklyPlan')
@@ -56,10 +40,9 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
       const plan = JSON.parse(saved)
       setHasPlan(true)
       setCurrentPlan(plan)
-      setActiveSet(plan.activeSet)
-      const types: Record<string, 'upper' | 'lower' | 'mix' | 'cardio'> = {}
-      plan.workouts.forEach((w: WorkoutDay) => {
-        types[w.day] = w.type
+      const types: Record<string, 'upper' | 'lower' | 'fullBody' | 'cardio'> = {}
+      plan.workouts.forEach((w: any) => {
+        types[w.day] = w.type === 'mix' ? 'fullBody' : w.type
       })
       setSelectedTypes(types)
     }
@@ -74,13 +57,13 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
         return prev.filter(d => d !== day)
       } else {
         if (prev.length >= 7) return prev
-        setSelectedTypes(prev => ({ ...prev, [day]: defaultType }))
+        setSelectedTypes(prev => ({ ...prev, [day]: 'upper' }))
         return [...prev, day]
       }
     })
   }
 
-  const handleTypeChange = (day: string, type: 'upper' | 'lower' | 'mix' | 'cardio') => {
+  const handleTypeChange = (day: string, type: 'upper' | 'lower' | 'fullBody' | 'cardio') => {
     setSelectedTypes(prev => ({ ...prev, [day]: type }))
   }
 
@@ -90,13 +73,12 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
       return
     }
 
-    const exerciseSet = EXERCISE_SETS[activeSet]
     const workouts: WorkoutDay[] = selectedDays.map(day => {
-      const type = selectedTypes[day] || defaultType
+      const type = selectedTypes[day] || 'upper'
       return {
         day,
         type,
-        exercises: exerciseSet[type],
+        exercises: EXERCISES[type],
         completed: false,
       }
     })
@@ -109,32 +91,11 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
       workouts,
       startOfWeek: startOfWeek.toISOString(),
       weekNumber: Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000)),
-      activeSet,
     }
 
     localStorage.setItem('weeklyPlan', JSON.stringify(plan))
     setCurrentPlan(plan)
     setHasPlan(true)
-  }
-
-  const handleRotate = () => {
-    if (!currentPlan) return
-
-    const sets = ['setA', 'setB', 'setC'] as const
-    const currentIdx = sets.indexOf(currentPlan.activeSet)
-    const nextIdx = (currentIdx + 1) % 3
-    const nextSet = sets[nextIdx]
-
-    const newExerciseSet = EXERCISE_SETS[nextSet]
-    const updated = { ...currentPlan, activeSet: nextSet, weekNumber: currentPlan.weekNumber + 1 }
-    updated.workouts = updated.workouts.map(workout => ({
-      ...workout,
-      exercises: newExerciseSet[workout.type],
-    }))
-
-    setActiveSet(nextSet)
-    setCurrentPlan(updated)
-    localStorage.setItem('weeklyPlan', JSON.stringify(updated))
   }
 
   const handleResetPlan = () => {
@@ -161,14 +122,6 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
 
   const todayWorkout = currentPlan?.workouts.find(w => w.day === getDayOfWeek())
 
-  const getSetName = (set: 'setA' | 'setB' | 'setC'): string => {
-    switch (set) {
-      case 'setA': return 'Set A'
-      case 'setB': return 'Set B'
-      case 'setC': return 'Set C'
-    }
-  }
-
   return (
     <div className="min-h-screen px-4 py-6 space-y-6">
       {/* Header */}
@@ -191,14 +144,9 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
           {/* Current Plan */}
           <div className="bg-white rounded-2xl shadow-sm p-4">
             <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-primary">
-                  {currentPlan.daysPerWeek} Days / Week
-                </h2>
-                <p className="text-sm text-text-secondary">
-                  Exercise Set: {getSetName(currentPlan.activeSet)}
-                </p>
-              </div>
+              <h2 className="text-lg font-semibold text-primary">
+                {currentPlan.daysPerWeek} Days / Week
+              </h2>
               <button
                 onClick={handleResetPlan}
                 className="text-red-400 hover:text-red-500 text-sm"
@@ -291,15 +239,6 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
                 )
               })}
             </div>
-
-            {/* Rotate Button */}
-            <button
-              onClick={handleRotate}
-              className="w-full mt-4 bg-accent hover:bg-accent/80 text-text-primary font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-95 flex items-center justify-center gap-2"
-            >
-              <span className="text-xl">🔄</span>
-              <span>Rotate Exercises</span>
-            </button>
           </div>
 
           {/* Quick Log */}
@@ -314,28 +253,6 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
         </>
       ) : (
         <>
-          {/* Exercise Set Selection */}
-          <div className="bg-white rounded-2xl shadow-sm p-4">
-            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-3">
-              Exercise Set
-            </h2>
-            <div className="grid grid-cols-3 gap-2">
-              {(Object.keys(EXERCISE_SETS) as Array<keyof typeof EXERCISE_SETS>).map((set) => (
-                <button
-                  key={set}
-                  onClick={() => setActiveSet(set)}
-                  className={`p-3 rounded-xl border-2 transition-all ${
-                    activeSet === set
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border hover:border-primary'
-                  }`}
-                >
-                  <div className="text-sm font-semibold">{getSetName(set)}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Day Selection */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <h2 className="text-lg font-bold text-text-primary mb-2">
@@ -367,8 +284,8 @@ export default function SchedulerPage({ onBack }: SchedulerPageProps) {
                     </button>
 
                     {isSelected && (
-                      <div className="mt-2 ml-4 space-x-2">
-                        {(['upper', 'lower', 'mix'] as const).map(type => (
+                      <div className="mt-2 ml-4 flex flex-wrap gap-2">
+                        {(['upper', 'lower', 'fullBody', 'cardio'] as const).map(type => (
                           <button
                             key={type}
                             onClick={() => handleTypeChange(day, type)}
