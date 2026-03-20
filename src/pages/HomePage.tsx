@@ -76,7 +76,7 @@ export default function HomePage({ user, onNavigate }: HomePageProps) {
       )}
 
       {/* Quick Stats */}
-      <div className="bg-white rounded-2xl shadow-sm p-4">
+      <div className="bg-surface rounded-2xl shadow-sm p-4">
         <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-3">
           Quick Stats
         </h2>
@@ -97,7 +97,7 @@ export default function HomePage({ user, onNavigate }: HomePageProps) {
       </div>
 
       {/* Today's Plan */}
-      <div className="bg-white rounded-2xl shadow-sm p-4">
+      <div className="bg-surface rounded-2xl shadow-sm p-4">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
             Today's Plan
@@ -167,7 +167,7 @@ export default function HomePage({ user, onNavigate }: HomePageProps) {
 
         <button
           onClick={() => onNavigate("history")}
-          className="w-full bg-white hover:bg-gray-50 text-text-primary font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-sm border border-border active:scale-95 flex items-center justify-center gap-2"
+          className="w-full bg-surface hover:bg-surface/80 text-text-primary font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-sm border border-border active:scale-95 flex items-center justify-center gap-2"
         >
           <span className="text-xl">📊</span>
           <span>View History</span>
@@ -175,7 +175,7 @@ export default function HomePage({ user, onNavigate }: HomePageProps) {
 
         <button
           onClick={() => onNavigate("scheduler")}
-          className="w-full bg-white hover:bg-gray-50 text-text-primary font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-sm border border-border active:scale-95 flex items-center justify-center gap-2"
+          className="w-full bg-surface hover:bg-surface/80 text-text-primary font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-sm border border-border active:scale-95 flex items-center justify-center gap-2"
         >
           <span className="text-xl">📅</span>
           <span>Weekly Plan</span>

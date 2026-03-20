@@ -225,7 +225,7 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
       {hasPlan && currentPlan && !isEditing ? (
         <>
           {/* Current Plan */}
-          <div className="bg-white rounded-2xl shadow-sm p-4">
+          <div className="bg-surface rounded-2xl shadow-sm p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-primary">
                 {currentPlan.daysPerWeek} Days / Week
@@ -359,7 +359,7 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
       ) : (
         <>
           {/* Day Selection */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="bg-surface rounded-2xl shadow-sm p-6">
             <h2 className="text-lg font-bold text-text-primary mb-2">
               Pick Your Workout Days
             </h2>

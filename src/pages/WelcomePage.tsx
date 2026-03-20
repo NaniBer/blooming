@@ -13,7 +13,7 @@ export default function WelcomePage({ user, isTelegramApp }: WelcomePageProps) {
         <p className="text-text-secondary text-lg">Your AI-powered workout companion</p>
         
         {user ? (
-          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+          <div className="bg-surface rounded-2xl shadow-sm p-6 space-y-4">
             <p className="text-xl font-medium">Welcome back, {user.first_name}!</p>
             <button 
               className="w-full bg-primary hover:bg-secondary text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:-translate-y-1 shadow-md hover:shadow-lg"
@@ -23,7 +23,7 @@ export default function WelcomePage({ user, isTelegramApp }: WelcomePageProps) {
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="bg-surface rounded-2xl shadow-sm p-6">
             <p className="text-text-secondary">Open this app from Telegram to get started</p>
           </div>
         )}

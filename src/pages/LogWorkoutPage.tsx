@@ -136,7 +136,7 @@ export default function LogWorkoutPage({
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
             workoutType === "strength"
-              ? "bg-white text-primary shadow-sm"
+              ? "bg-surface text-primary shadow-sm"
               : "text-text-secondary"
           }`}
         >
@@ -149,7 +149,7 @@ export default function LogWorkoutPage({
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
             workoutType === "cardio"
-              ? "bg-white text-primary shadow-sm"
+              ? "bg-surface text-primary shadow-sm"
               : "text-text-secondary"
           }`}
         >
@@ -222,7 +222,7 @@ export default function LogWorkoutPage({
                 onChange={(e) => setCustomWeight(parseFloat(e.target.value))}
                 placeholder="Weight (kg)"
                 step="0.5"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-center"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary/50 text-center"
               />
             ) : (
               <>
@@ -235,7 +235,7 @@ export default function LogWorkoutPage({
                   placeholder="Duration (minutes)"
                   step="1"
                   min="1"
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-center"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary/50 text-center"
                 />
                 <input
                   type="number"
@@ -246,7 +246,7 @@ export default function LogWorkoutPage({
                   placeholder="Distance (km) - optional"
                   step="0.1"
                   min="0"
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-center"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary/50 text-center"
                 />
               </>
             )}

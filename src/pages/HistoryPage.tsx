@@ -74,7 +74,7 @@ export default function HistoryPage({
 
       {/* Workout List */}
       {workouts.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+        <div className="bg-surface rounded-2xl shadow-sm p-8 text-center">
           <div className="text-4xl mb-3">📋</div>
           <p className="text-text-secondary">No workouts logged yet</p>
           <p className="text-text-secondary text-sm">
@@ -84,7 +84,7 @@ export default function HistoryPage({
       ) : (
         <div className="space-y-3">
           {workouts.map((workout) => (
-            <div key={workout.id} className="bg-white rounded-xl shadow-sm p-4">
+            <div key={workout.id} className="bg-surface rounded-xl shadow-sm p-4">
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h3 className="font-semibold text-text-primary">
