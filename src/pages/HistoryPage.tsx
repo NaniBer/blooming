@@ -17,7 +17,23 @@ export default function HistoryPage({
 
   useEffect(() => {
     async function loadWorkouts() {
-      if (!user) return;
+      // Fallback to localStorage if user not authenticated
+      if (!user) {
+        console.warn('User not authenticated, using localStorage fallback');
+
+        const stored = localStorage.getItem("workouts");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setWorkouts(
+            parsed.sort(
+              (a: any, b: any) =>
+                new Date(a.date).getTime() - new Date(b.date).getTime(),
+            ),
+          );
+        }
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
@@ -46,7 +62,7 @@ export default function HistoryPage({
 
         if (error) throw error;
 
-        // Transform data to match the expected format
+        // Transform data to match expected format
         const transformed = workouts?.map(w => {
           let base = {
             id: w.id,
@@ -89,15 +105,20 @@ export default function HistoryPage({
   const handleDelete = async (workoutId: string) => {
     if (confirm("Delete this workout?")) {
       try {
-        // Delete workout (cascade will delete exercises)
-        const { error } = await supabase
-          .from('workouts')
-          .delete()
-          .eq('id', workoutId);
+        // Try to delete from Supabase if user is authenticated
+        if (user) {
+          const { error } = await supabase
+            .from('workouts')
+            .delete()
+            .eq('id', workoutId);
 
-        if (error) throw error;
+          if (error) throw error;
+        }
 
-        setWorkouts(workouts.filter(w => w.id !== workoutId));
+        // Always delete from localStorage
+        const updated = workouts.filter(w => w.id !== workoutId);
+        setWorkouts(updated);
+        localStorage.setItem("workouts", JSON.stringify(updated));
         onWorkoutDeleted();
       } catch (error) {
         console.error('Error deleting workout:', error);
@@ -109,14 +130,19 @@ export default function HistoryPage({
   const handleClearAll = async () => {
     if (confirm("Delete all workouts? This cannot be undone.")) {
       try {
-        const { error } = await supabase
-          .from('workouts')
-          .delete()
-          .eq('user_id', user!.id);
+        // Try to delete from Supabase if user is authenticated
+        if (user) {
+          const { error } = await supabase
+            .from('workouts')
+            .delete()
+            .eq('user_id', user.id);
 
-        if (error) throw error;
+          if (error) throw error;
+        }
 
+        // Always clear from localStorage
         setWorkouts([]);
+        localStorage.removeItem("workouts");
         onWorkoutDeleted();
       } catch (error) {
         console.error('Error clearing workouts:', error);

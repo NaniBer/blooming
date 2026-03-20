@@ -125,16 +125,6 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
       return;
     }
 
-    if (selectedDays.length === 0) {
-      alert("Please select at least one workout day");
-      return;
-    }
-
-    if (!user) {
-      alert('Please wait while we verify your account');
-      return;
-    }
-
     setIsSaving(true);
 
     try {
@@ -149,6 +139,44 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
       });
 
       const today = new Date();
+
+      // Fallback to localStorage if user not authenticated
+      if (!user) {
+        console.warn('User not authenticated, using localStorage fallback');
+
+        const startOfWeek = getStartOfWeek(today);
+        const weekNumber = Math.floor(
+          (today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) /
+            (7 * 24 * 60 * 60 * 1000),
+        );
+
+        const plan: WeeklyPlan = {
+          daysPerWeek: selectedDays.length,
+          workouts,
+          startOfWeek: startOfWeek.toISOString(),
+          weekNumber,
+          id: Date.now().toString(),
+        };
+
+        localStorage.setItem("weeklyPlan", JSON.stringify(plan));
+        setCurrentPlan(plan);
+        setHasPlan(true);
+        setIsSaving(false);
+
+        const message = isEditing ? "✅ Plan edited successfully!" : "✅ Plan created successfully!";
+        alert(message);
+
+        setTimeout(() => {
+          setIsEditing(false);
+          if (isLocalEdit) {
+            setIsLocalEdit(false);
+          } else {
+            onBack();
+          }
+        }, 500);
+        return;
+      }
+
       const planDate = today.toISOString().split('T')[0];
       const weekNumber = Math.floor(
         (today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) /
@@ -222,14 +250,10 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
   };
 
   const handleResetPlan = async () => {
-    if (!user) {
-      alert('Please wait while we verify your account');
-      return;
-    }
-
     if (confirm("Delete current plan and create a new one?")) {
       try {
-        if (currentPlan) {
+        // Try to delete from Supabase if user is authenticated
+        if (user && currentPlan) {
           const { error } = await supabase
             .from('ai_plans')
             .delete()
@@ -237,6 +261,9 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
 
           if (error) throw error;
         }
+
+        // Always clear localStorage plan
+        localStorage.removeItem("weeklyPlan");
 
         setHasPlan(false);
         setCurrentPlan(null);

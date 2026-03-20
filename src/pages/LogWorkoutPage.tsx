@@ -60,14 +60,56 @@ export default function LogWorkoutPage({
   const [rpe, setRpe] = useState(5);
 
   const handleSubmit = async () => {
-    if (!user) {
-      alert('Please wait while we verify your account');
-      return;
-    }
+    // Don't block if user isn't set yet - try to save anyway
+    // If it fails, Supabase will show the error
 
     setIsSaving(true);
 
     try {
+      if (!user) {
+        // User not authenticated - fall back to localStorage
+        console.warn('User not authenticated, using localStorage fallback');
+
+        let workout: any;
+
+        if (workoutType === "strength") {
+          workout = {
+            id: Date.now().toString(),
+            name: selectedStrengthExercise.name,
+            sets: selectedStrengthExercise.sets,
+            reps: selectedStrengthExercise.reps,
+            weightKg: customMode
+              ? [customWeight]
+              : selectedStrengthExercise.weightKg,
+            rpe,
+            date: new Date(),
+          };
+        } else {
+          workout = {
+            id: Date.now().toString(),
+            name: selectedCardioExercise.name,
+            durationSeconds: customMode
+              ? customDuration * 60
+              : selectedCardioExercise.durationSeconds,
+            distanceMeters:
+              customMode && customDistance > 0
+                ? customDistance * 1000
+                : selectedCardioExercise.distanceMeters,
+            rpe,
+            date: new Date(),
+          };
+        }
+
+        const existing = localStorage.getItem("workouts");
+        const workouts = existing ? JSON.parse(existing) : [];
+        workouts.push(workout);
+        localStorage.setItem("workouts", JSON.stringify(workouts));
+
+        onWorkoutSaved();
+        onBack();
+        return;
+      }
+
       let workoutData: any;
 
       if (workoutType === "strength") {

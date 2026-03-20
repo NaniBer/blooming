@@ -34,7 +34,43 @@ export default function HomePage({ user, onNavigate }: HomePageProps) {
   useEffect(() => {
     async function loadData() {
       // Don't try to load from Supabase if there's an auth error
-      if (authError || !authUser) {
+      if (authError) {
+        setLoading(false);
+        return;
+      }
+
+      // Fallback to localStorage if user not authenticated
+      if (!authUser) {
+        console.warn('User not authenticated, using localStorage fallback');
+
+        // Load workouts from localStorage
+        const storedWorkouts = localStorage.getItem("workouts");
+        const workoutCount = storedWorkouts ? JSON.parse(storedWorkouts).length : 0;
+        setWorkoutCount(workoutCount);
+
+        // Load weekly plan from localStorage
+        const savedPlan = localStorage.getItem("weeklyPlan");
+        if (savedPlan) {
+          const plan = JSON.parse(savedPlan);
+
+          const days = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ];
+          const today = days[new Date().getDay()];
+          const workout = plan.workouts.find((w: WorkoutDay) => w.day === today);
+          setTodayWorkout(workout || null);
+          setWeeklyPlan(plan);
+        } else {
+          setWeeklyPlan(null);
+          setTodayWorkout(null);
+        }
+
         setLoading(false);
         return;
       }
