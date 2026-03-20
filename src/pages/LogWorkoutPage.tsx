@@ -128,7 +128,7 @@ export default function LogWorkoutPage({
       </div>
 
       {/* Workout Type Toggle */}
-      <div className="flex bg-gray-100 rounded-xl p-1">
+      <div className="flex bg-surface/50 rounded-xl p-1">
         <button
           onClick={() => {
             setWorkoutType("strength");
@@ -263,7 +263,7 @@ export default function LogWorkoutPage({
               max="10"
               value={rpe}
               onChange={(e) => setRpe(parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+              className="w-full h-2 bg-surface/50 rounded-lg appearance-none cursor-pointer accent-primary"
             />
           </div>
           <div className="text-xs text-text-secondary flex items-center gap-1">
