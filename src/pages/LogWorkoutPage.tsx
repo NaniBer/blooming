@@ -74,9 +74,7 @@ export default function LogWorkoutPage({
             name: selectedStrengthExercise.name,
             sets: customMode ? [customWeight, customWeight, customWeight] : selectedStrengthExercise.sets,
             reps: customMode ? [10, 10, 10] : selectedStrengthExercise.reps,
-            weightKg: customMode
-              ? [customWeight]
-              : selectedStrengthExercise.weightKg,
+            weightKg: customMode ? [customWeight, customWeight, customWeight] : selectedStrengthExercise.weightKg,
             rpe,
             date: new Date(),
           };
@@ -84,13 +82,9 @@ export default function LogWorkoutPage({
           workout = {
             id: Date.now().toString(),
             name: selectedCardioExercise.name,
-            durationSeconds: customMode
-              ? customDuration * 60
-              : selectedCardioExercise.durationSeconds,
+            durationSeconds: customMode ? customDuration * 60 : selectedCardioExercise.durationSeconds,
             distanceMeters:
-              customMode && customDistance > 0
-                ? customDistance * 1000
-                : selectedCardioExercise.distanceMeters,
+              customMode && customDistance > 0 ? customDistance * 1000 : selectedCardioExercise.distanceMeters,
             rpe,
             date: new Date(),
           };
@@ -360,27 +354,8 @@ export default function LogWorkoutPage({
                   <h3 className="text-xl font-bold text-primary">
                     {selectedStrengthExercise.name}
                   </h3>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="text-center">
-                  <p className="text-xs text-text-secondary mb-1">Sets</p>
-                  <p className="text-3xl font-bold text-primary">
-                    {customMode ? 3 : selectedStrengthExercise.sets.length}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-text-secondary mb-1">Reps</p>
-                  <p className="text-3xl font-bold text-primary">
-                    {customMode ? 10 : selectedStrengthExercise.reps[0]}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-text-secondary mb-1">Weight</p>
-                  <p className="text-3xl font-bold text-primary">
-                    {customMode ? customWeight : selectedStrengthExercise.weightKg[0]}
-                    <span className="text-lg text-text-secondary"> kg</span>
+                  <p className="text-2xl text-primary mt-2">
+                    {customMode ? customWeight : selectedStrengthExercise.weightKg[0]}kg × {customMode ? 3 : selectedStrengthExercise.sets.length} × {customMode ? 10 : selectedStrengthExercise.reps[0]} reps
                   </p>
                 </div>
               </div>
@@ -396,7 +371,7 @@ export default function LogWorkoutPage({
                   <div>
                     <span className="text-text-secondary">Total Reps:</span>
                     <span className="font-semibold ml-1">
-                      {customMode ? 30 : selectedStrengthExercise.sets.reduce((a, b) => a + b, 0)}
+                      {customMode ? 30 : selectedStrengthExercise.reps.reduce((a, b) => a + b, 0)}
                     </span>
                   </div>
                   <div>
@@ -416,26 +391,13 @@ export default function LogWorkoutPage({
                   <h3 className="text-xl font-bold text-primary">
                     {selectedCardioExercise.name}
                   </h3>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-xs text-text-secondary mb-1">Duration</p>
-                  <p className="text-3xl font-bold text-primary">
-                    {customMode ? customDuration : Math.round(selectedCardioExercise.durationSeconds / 60)}
-                    <span className="text-lg text-text-secondary"> min</span>
+                  <p className="text-2xl text-primary mt-2">
+                    {customMode ? customDuration : Math.round(selectedCardioExercise.durationSeconds / 60)}min
+                    {selectedCardioExercise.distanceMeters && (
+                      <span> • {customMode && customDistance > 0 ? customDistance : selectedCardioExercise.distanceMeters / 1000}km</span>
+                    )}
                   </p>
                 </div>
-                {selectedCardioExercise.distanceMeters && (
-                  <div className="text-center">
-                    <p className="text-xs text-text-secondary mb-1">Distance</p>
-                    <p className="text-3xl font-bold text-primary">
-                      {customMode && customDistance > 0 ? customDistance : selectedCardioExercise.distanceMeters / 1000}
-                      <span className="text-lg text-text-secondary"> km</span>
-                    </p>
-                  </div>
-                )}
               </div>
 
               <div className="bg-accent/20 rounded-lg p-3 mt-3">
@@ -453,7 +415,7 @@ export default function LogWorkoutPage({
                         ? (customDistance * 1000 / (customDuration * 60)).toFixed(1)
                         : selectedCardioExercise.distanceMeters
                           ? (selectedCardioExercise.distanceMeters / selectedCardioExercise.durationSeconds * 60).toFixed(1)
-                          : "-"}
+                          : '-'}
                     </span>
                     <span className="text-text-secondary"> m/min</span>
                   </div>
