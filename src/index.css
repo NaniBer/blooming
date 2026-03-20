@@ -3,7 +3,12 @@
 @tailwind utilities;
 
 :root {
+  --primary-color: #4CAF50;
+  --secondary-color: #8BC34A;
+  --accent-color: #FFC107;
   --bg-color: #FAFAFA;
+  --surface-color: #FFFFFF;
+  --border-color: #E0E0E0;
   --text-primary: #2D3436;
   --text-secondary: #636E72;
 }
@@ -11,6 +16,7 @@
 body {
   background-color: var(--bg-color);
   color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 @keyframes float {

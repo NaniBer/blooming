@@ -1,4 +1,5 @@
-/** @type {import('tailwindcss').Config} */
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
 const themes = {
   original: {
     primary: '#4CAF50',
@@ -50,7 +51,7 @@ const themes = {
     'text-primary': '#cdd6f4',
     'text-secondary': '#a6adc8',
   },
-  'dracula': {
+  dracula: {
     primary: '#bd93f9',
     secondary: '#ff79c6',
     accent: '#f1fa8c',
@@ -60,7 +61,7 @@ const themes = {
     'text-primary': '#f8f8f2',
     'text-secondary': '#bfbfbf',
   },
-  'nord': {
+  nord: {
     primary: '#81a1c1',
     secondary: '#88c0d0',
     accent: '#ebcb8b',
@@ -112,27 +113,59 @@ const themes = {
   },
 };
 
-module.exports = {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        primary: 'var(--primary-color)',
-        secondary: 'var(--secondary-color)',
-        accent: 'var(--accent-color)',
-        background: 'var(--bg-color)',
-        surface: 'var(--surface-color)',
-        border: 'var(--border-color)',
-        'text-primary': 'var(--text-primary)',
-        'text-secondary': 'var(--text-secondary)',
-      },
-    },
-  },
-  plugins: [],
+interface ThemeContextType {
+  theme: string;
+  setTheme: (theme: string) => void;
+  themeColors: typeof themes.original;
 }
 
-// Export themes for use in React
-module.exports.themes = themes;
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};
+
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+  const [theme, setThemeState] = useState<string>(() => {
+    return localStorage.getItem('theme') || 'catppuccin-latte';
+  });
+  const [themeColors, setThemeColors] = useState(themes.original);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'catppuccin-latte';
+    setThemeState(savedTheme);
+    applyTheme(savedTheme);
+  }, []);
+
+  const applyTheme = (themeName: string) => {
+    const colors = themes[themeName as keyof typeof themes] || themes.original;
+    setThemeColors(colors);
+    localStorage.setItem('theme', themeName);
+
+    // Update CSS variables
+    const root = document.documentElement;
+    root.style.setProperty('--primary-color', colors.primary);
+    root.style.setProperty('--secondary-color', colors.secondary);
+    root.style.setProperty('--accent-color', colors.accent);
+    root.style.setProperty('--bg-color', colors.background);
+    root.style.setProperty('--surface-color', colors.surface);
+    root.style.setProperty('--border-color', colors.border);
+    root.style.setProperty('--text-primary', colors['text-primary']);
+    root.style.setProperty('--text-secondary', colors['text-secondary']);
+  };
+
+  const setTheme = (themeName: string) => {
+    setThemeState(themeName);
+    applyTheme(themeName);
+  };
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme, themeColors }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};

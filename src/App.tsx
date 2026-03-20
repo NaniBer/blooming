@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage'
 import LogWorkoutPage from './pages/LogWorkoutPage'
 import HistoryPage from './pages/HistoryPage'
 import SchedulerPage from './pages/SchedulerPage'
+import { ThemeProvider } from './contexts/ThemeContext'
 
 type Page = 'home' | 'log' | 'history' | 'scheduler'
 
@@ -88,9 +89,11 @@ function App() {
   }
 
   return (
-    <div className="app">
-      {renderPage()}
-    </div>
+    <ThemeProvider>
+      <div className="app">
+        {renderPage()}
+      </div>
+    </ThemeProvider>
   )
 }
 
