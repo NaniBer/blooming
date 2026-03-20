@@ -1,101 +1,127 @@
-import { useState } from 'react'
-import { Workout } from '../types'
+import { useState } from "react";
+import { Workout } from "../types";
 
 interface LogWorkoutPageProps {
-  onBack: () => void
-  onWorkoutSaved: () => void
+  onBack: () => void;
+  onWorkoutSaved: () => void;
 }
 
 interface StrengthExerciseTemplate {
-  name: string
-  sets: number[]
-  reps: number[]
-  weightKg: number[]
+  name: string;
+  sets: number[];
+  reps: number[];
+  weightKg: number[];
 }
 
 interface CardioExerciseTemplate {
-  name: string
-  durationSeconds: number
-  distanceMeters?: number
+  name: string;
+  durationSeconds: number;
+  distanceMeters?: number;
 }
 
 const STRENGTH_EXERCISES: StrengthExerciseTemplate[] = [
-  { name: 'Bench Press', sets: [3], reps: [10], weightKg: [60] },
-  { name: 'Squat', sets: [3], reps: [10], weightKg: [0] },
-  { name: 'Deadlift', sets: [3], reps: [5], weightKg: [100] },
-  { name: 'Overhead Press', sets: [3], reps: [8], weightKg: [70] },
-  { name: 'Pull Up', sets: [3], reps: [8], weightKg: [80] },
-  { name: 'Cable Fly', sets: [3], reps: [10], weightKg: [6] },
-  { name: 'Leg Press', sets: [3], reps: [8], weightKg: [90] },
-]
+  { name: "Bench Press", sets: [3], reps: [10], weightKg: [60] },
+  { name: "Squat", sets: [3], reps: [10], weightKg: [0] },
+  { name: "Deadlift", sets: [3], reps: [5], weightKg: [100] },
+  { name: "Overhead Press", sets: [3], reps: [8], weightKg: [70] },
+  { name: "Pull Up", sets: [3], reps: [8], weightKg: [80] },
+  { name: "Cable Fly", sets: [3], reps: [10], weightKg: [6] },
+  { name: "Leg Press", sets: [3], reps: [8], weightKg: [90] },
+];
 
 const CARDIO_EXERCISES: CardioExerciseTemplate[] = [
-  { name: 'Treadmill', durationSeconds: 1800, distanceMeters: 3000 },
-  { name: 'Cycling', durationSeconds: 2400, distanceMeters: 12000 },
-  { name: 'Elliptical', durationSeconds: 1500 },
-  { name: 'Rowing', durationSeconds: 1200, distanceMeters: 2000 },
-  { name: 'Stair Climber', durationSeconds: 1200 },
-  { name: 'Swimming', durationSeconds: 900, distanceMeters: 500 },
-]
+  { name: "Treadmill", durationSeconds: 1800, distanceMeters: 3000 },
+  { name: "Cycling", durationSeconds: 2400, distanceMeters: 12000 },
+  { name: "Elliptical", durationSeconds: 1500 },
+  { name: "Rowing", durationSeconds: 1200, distanceMeters: 2000 },
+  { name: "Stair Climber", durationSeconds: 1200 },
+  { name: "Swimming", durationSeconds: 900, distanceMeters: 500 },
+];
 
-type WorkoutType = 'strength' | 'cardio'
+type WorkoutType = "strength" | "cardio";
 
-export default function LogWorkoutPage({ onBack, onWorkoutSaved }: LogWorkoutPageProps) {
-  const [workoutType, setWorkoutType] = useState<WorkoutType>('strength')
-  const [selectedStrengthExercise, setSelectedStrengthExercise] = useState<StrengthExerciseTemplate>(STRENGTH_EXERCISES[0]!)
-  const [selectedCardioExercise, setSelectedCardioExercise] = useState<CardioExerciseTemplate>(CARDIO_EXERCISES[0]!)
-  const [customMode, setCustomMode] = useState(false)
-  const [customWeight, setCustomWeight] = useState(60)
-  const [customDuration, setCustomDuration] = useState(30)
-  const [customDistance, setCustomDistance] = useState(0)
-  const [rpe, setRpe] = useState(5)
+export default function LogWorkoutPage({
+  onBack,
+  onWorkoutSaved,
+}: LogWorkoutPageProps) {
+  const [workoutType, setWorkoutType] = useState<WorkoutType>("strength");
+  const [selectedStrengthExercise, setSelectedStrengthExercise] =
+    useState<StrengthExerciseTemplate>(STRENGTH_EXERCISES[0]!);
+  const [selectedCardioExercise, setSelectedCardioExercise] =
+    useState<CardioExerciseTemplate>(CARDIO_EXERCISES[0]!);
+  const [customMode, setCustomMode] = useState(false);
+  const [customWeight, setCustomWeight] = useState(60);
+  const [customDuration, setCustomDuration] = useState(30);
+  const [customDistance, setCustomDistance] = useState(0);
+  const [rpe, setRpe] = useState(5);
 
   const handleSubmit = () => {
-    let workout: Workout
+    let workout: Workout;
 
-    if (workoutType === 'strength') {
+    if (workoutType === "strength") {
       workout = {
         id: Date.now().toString(),
         name: selectedStrengthExercise.name,
         sets: selectedStrengthExercise.sets,
         reps: selectedStrengthExercise.reps,
-        weightKg: customMode ? [customWeight] : selectedStrengthExercise.weightKg,
+        weightKg: customMode
+          ? [customWeight]
+          : selectedStrengthExercise.weightKg,
         rpe,
-        date: new Date()
-      }
+        date: new Date(),
+      };
     } else {
       workout = {
         id: Date.now().toString(),
         name: selectedCardioExercise.name,
-        durationSeconds: customMode ? customDuration * 60 : selectedCardioExercise.durationSeconds,
-        distanceMeters: customMode && customDistance > 0 ? customDistance * 1000 : selectedCardioExercise.distanceMeters,
+        durationSeconds: customMode
+          ? customDuration * 60
+          : selectedCardioExercise.durationSeconds,
+        distanceMeters:
+          customMode && customDistance > 0
+            ? customDistance * 1000
+            : selectedCardioExercise.distanceMeters,
         rpe,
-        date: new Date()
-      }
+        date: new Date(),
+      };
     }
 
-    const existing = localStorage.getItem('workouts')
-    const workouts = existing ? JSON.parse(existing) : []
-    workouts.push(workout)
-    localStorage.setItem('workouts', JSON.stringify(workouts))
+    const existing = localStorage.getItem("workouts");
+    const workouts = existing ? JSON.parse(existing) : [];
+    workouts.push(workout);
+    localStorage.setItem("workouts", JSON.stringify(workouts));
 
-    onWorkoutSaved()
-    onBack()
-  }
+    onWorkoutSaved();
+    onBack();
+  };
 
-  const exercises = workoutType === 'strength' ? STRENGTH_EXERCISES : CARDIO_EXERCISES
-  const selectedExercise = workoutType === 'strength' ? selectedStrengthExercise : selectedCardioExercise
+  const exercises =
+    workoutType === "strength" ? STRENGTH_EXERCISES : CARDIO_EXERCISES;
+  const selectedExercise =
+    workoutType === "strength"
+      ? selectedStrengthExercise
+      : selectedCardioExercise;
 
   return (
     <div className="min-h-screen px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3 py-2">
+      <div className="flex items-center gap-3 pt-20 pb-4">
         <button
           onClick={onBack}
           className="text-primary hover:text-secondary transition-colors"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </button>
         <h1 className="text-xl font-bold text-text-primary">Log Workout</h1>
@@ -105,26 +131,26 @@ export default function LogWorkoutPage({ onBack, onWorkoutSaved }: LogWorkoutPag
       <div className="flex bg-gray-100 rounded-xl p-1">
         <button
           onClick={() => {
-            setWorkoutType('strength')
-            setCustomMode(false)
+            setWorkoutType("strength");
+            setCustomMode(false);
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-            workoutType === 'strength'
-              ? 'bg-white text-primary shadow-sm'
-              : 'text-text-secondary'
+            workoutType === "strength"
+              ? "bg-white text-primary shadow-sm"
+              : "text-text-secondary"
           }`}
         >
           💪 Strength
         </button>
         <button
           onClick={() => {
-            setWorkoutType('cardio')
-            setCustomMode(false)
+            setWorkoutType("cardio");
+            setCustomMode(false);
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-            workoutType === 'cardio'
-              ? 'bg-white text-primary shadow-sm'
-              : 'text-text-secondary'
+            workoutType === "cardio"
+              ? "bg-white text-primary shadow-sm"
+              : "text-text-secondary"
           }`}
         >
           🏃 Cardio
@@ -141,25 +167,27 @@ export default function LogWorkoutPage({ onBack, onWorkoutSaved }: LogWorkoutPag
             <button
               key={idx}
               onClick={() => {
-                if (workoutType === 'strength') {
-                  setSelectedStrengthExercise(exercise as StrengthExerciseTemplate)
+                if (workoutType === "strength") {
+                  setSelectedStrengthExercise(
+                    exercise as StrengthExerciseTemplate,
+                  );
                 } else {
-                  setSelectedCardioExercise(exercise as CardioExerciseTemplate)
+                  setSelectedCardioExercise(exercise as CardioExerciseTemplate);
                 }
               }}
               className={`p-4 rounded-xl border-2 transition-all active:scale-95 hover:scale-100 ${
                 selectedExercise === exercise
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border hover:border-primary'
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border hover:border-primary"
               }`}
             >
               <div className="text-sm font-semibold">{exercise.name}</div>
-              {workoutType === 'strength' && 'sets' in exercise && (
+              {workoutType === "strength" && "sets" in exercise && (
                 <div className="text-xs text-text-secondary opacity-70">
-                  {exercise.sets.join('x')} × {exercise.reps.join('x')}
+                  {exercise.sets.join("x")} × {exercise.reps.join("x")}
                 </div>
               )}
-              {workoutType === 'cardio' && 'durationSeconds' in exercise && (
+              {workoutType === "cardio" && "durationSeconds" in exercise && (
                 <div className="text-xs text-text-secondary opacity-70">
                   {Math.round(exercise.durationSeconds / 60)} min
                 </div>
@@ -179,13 +207,15 @@ export default function LogWorkoutPage({ onBack, onWorkoutSaved }: LogWorkoutPag
             className="w-4 h-4 cursor-pointer"
           />
           <span className="text-sm text-text-secondary">
-            {workoutType === 'strength' ? 'Custom weight' : 'Custom duration/distance'}
+            {workoutType === "strength"
+              ? "Custom weight"
+              : "Custom duration/distance"}
           </span>
         </label>
 
         {customMode && (
           <div className="space-y-2">
-            {workoutType === 'strength' ? (
+            {workoutType === "strength" ? (
               <input
                 type="number"
                 value={customWeight}
@@ -199,7 +229,9 @@ export default function LogWorkoutPage({ onBack, onWorkoutSaved }: LogWorkoutPag
                 <input
                   type="number"
                   value={customDuration}
-                  onChange={(e) => setCustomDuration(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setCustomDuration(parseFloat(e.target.value))
+                  }
                   placeholder="Duration (minutes)"
                   step="1"
                   min="1"
@@ -208,7 +240,9 @@ export default function LogWorkoutPage({ onBack, onWorkoutSaved }: LogWorkoutPag
                 <input
                   type="number"
                   value={customDistance}
-                  onChange={(e) => setCustomDistance(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setCustomDistance(parseFloat(e.target.value))
+                  }
                   placeholder="Distance (km) - optional"
                   step="0.1"
                   min="0"
@@ -248,5 +282,5 @@ export default function LogWorkoutPage({ onBack, onWorkoutSaved }: LogWorkoutPag
         <span>Save Workout</span>
       </button>
     </div>
-  )
+  );
 }

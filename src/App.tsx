@@ -29,6 +29,8 @@ function App() {
   const [isTelegramApp, setIsTelegramApp] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [currentPage, setCurrentPage] = useState<Page>('home')
+  const [schedulerEditMode, setSchedulerEditMode] = useState(false)
+  const [schedulerSource, setSchedulerSource] = useState<Page>('home')
 
   useEffect(() => {
     try {
@@ -64,13 +66,22 @@ function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <HomePage user={user} onNavigate={setCurrentPage} />
+        return <HomePage user={user} onNavigate={(page, editMode) => {
+          if (page === 'scheduler') {
+            setSchedulerSource('home')
+            setSchedulerEditMode(editMode || false)
+          }
+          setCurrentPage(page)
+        }} />
       case 'log':
         return <LogWorkoutPage onBack={() => setCurrentPage('home')} onWorkoutSaved={() => {}} />
       case 'history':
         return <HistoryPage onBack={() => setCurrentPage('home')} onWorkoutDeleted={() => {}} />
       case 'scheduler':
-        return <SchedulerPage onBack={() => setCurrentPage('home')} />
+        return <SchedulerPage onBack={() => {
+          setCurrentPage(schedulerSource)
+          setSchedulerEditMode(false)
+        }} editMode={schedulerEditMode} />
       default:
         return <HomePage user={user} onNavigate={setCurrentPage} />
     }
