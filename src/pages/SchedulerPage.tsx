@@ -53,10 +53,31 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
 
   useEffect(() => {
     async function loadPlan() {
-      if (!user) return;
+      // Fallback to localStorage if user not authenticated
+      if (!user) {
+        const saved = localStorage.getItem("weeklyPlan");
+        if (saved) {
+          const plan = JSON.parse(saved);
+          const types: Record<string, "upper" | "lower" | "fullBody" | "cardio"> = {};
+          plan.workouts.forEach((w: any) => {
+            types[w.day] = w.type === "mix" ? "fullBody" : w.type;
+          });
+          setSelectedTypes(types);
+          setHasPlan(true);
+          setCurrentPlan(plan);
+
+          // If edit mode is enabled, pre-fill the form
+          if (editMode) {
+            const days = plan.workouts.map((w: any) => w.day);
+            setSelectedDays(days);
+            setIsEditing(true);
+          }
+        }
+        return;
+      }
 
       try {
-        // Fetch latest plan from Supabase
+        // Try to fetch from Supabase first
         const { data: plans, error } = await supabase
           .from('ai_plans')
           .select('*')
@@ -64,7 +85,32 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
           .order('created_at', { ascending: false })
           .limit(1);
 
-        if (error) throw error;
+        if (error) {
+          // Fallback to localStorage on error
+          console.warn('Supabase error, using localStorage fallback:', error);
+          const saved = localStorage.getItem("weeklyPlan");
+          if (saved) {
+            const plan = JSON.parse(saved);
+            const types: Record<string, "upper" | "lower" | "fullBody" | "cardio"> = {};
+            plan.workouts.forEach((w: any) => {
+              types[w.day] = w.type === "mix" ? "fullBody" : w.type;
+            });
+            setSelectedTypes(types);
+            setHasPlan(true);
+            setCurrentPlan(plan);
+
+            // If edit mode is enabled, pre-fill the form
+            if (editMode) {
+              const days = plan.workouts.map((w: any) => w.day);
+              setSelectedDays(days);
+              setIsEditing(true);
+            }
+          } else {
+            setHasPlan(false);
+            setCurrentPlan(null);
+          }
+          return;
+        }
 
         if (plans && plans.length > 0) {
           const plan = plans[0];
@@ -396,26 +442,26 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
 
             {/* Weekly Schedule */}
             <div className="space-y-2">
-              {DAYS_OF_WEEK.map((day) => {
-                const workout = currentPlan.workouts.find((w) => w.day === day);
-                const isToday = day === getDayOfWeek();
+                {DAYS_OF_WEEK.map((day) => {
+                  const workout = currentPlan.workouts.find((w) => w.day === day);
+                  const isToday = day === getDayOfWeek();
 
-                if (!workout) {
-                  return (
-                    <div
-                      key={day}
-                      className={`p-3 rounded-lg border-2 ${
-                        isToday
-                          ? "border-gray-200 bg-gray-50"
-                          : "border-transparent"
-                      }`}
-                    >
-                      <p className="text-sm text-text-secondary opacity-60">
-                        {day} - Rest Day
-                      </p>
-                    </div>
-                  );
-                }
+                  if (!workout) {
+                    return (
+                      <div
+                        key={day}
+                        className={`p-3 rounded-lg border-2 ${
+                          isToday
+                            ? "border-border bg-surface/50"
+                            : "border-transparent"
+                        }`}
+                      >
+                        <p className="text-sm text-text-secondary opacity-60">
+                          {day} - Rest Day
+                        </p>
+                      </div>
+                    );
+                  }
 
                 return (
                   <div
@@ -424,7 +470,7 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
                       isToday
                         ? "border-primary bg-primary/5"
                         : workout.completed
-                          ? "border-green-400 bg-green-50"
+                          ? "border-primary bg-accent/20"
                           : "border-border"
                     }`}
                   >
@@ -460,8 +506,8 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
                           }}
                           className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                             workout.completed
-                              ? "bg-green-500 border-green-500 text-white"
-                              : "border-gray-300"
+                              ? "bg-primary border-primary text-white"
+                              : "border-border"
                           }`}
                         >
                           {workout.completed && <span>✓</span>}
@@ -519,17 +565,17 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
                         {(
                           ["upper", "lower", "fullBody", "cardio"] as const
                         ).map((type) => (
-                          <button
-                            key={type}
-                            onClick={() => handleTypeChange(day, type)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                              selectedType === type
-                                ? "bg-primary text-white"
-                                : "bg-gray-100 text-text-secondary hover:bg-gray-200"
-                            }`}
-                          >
-                            {type.charAt(0).toUpperCase() + type.slice(1)}
-                          </button>
+                            <button
+                              key={type}
+                              onClick={() => handleTypeChange(day, type)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                selectedType === type
+                                  ? "bg-primary text-white"
+                                  : "bg-surface text-text-secondary hover:bg-surface/80"
+                              }`}
+                            >
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </button>
                         ))}
                       </div>
                     )}
@@ -542,7 +588,7 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
               {isEditing && (
                 <button
                   onClick={handleCancelEdit}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-text-primary font-semibold py-4 px-6 rounded-xl transition-all duration-200"
+                  className="flex-1 bg-surface hover:bg-surface/80 text-text-primary font-semibold py-4 px-6 rounded-xl transition-all duration-200"
                 >
                   Cancel
                 </button>
@@ -552,7 +598,7 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
                 disabled={selectedDays.length === 0 || isSaving}
                 className={`flex-1 font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-95 flex items-center justify-center gap-2 ${
                   selectedDays.length === 0 || isSaving
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    ? "bg-surface text-text-secondary cursor-not-allowed"
                     : "bg-primary hover:bg-secondary text-white"
                 }`}
               >
