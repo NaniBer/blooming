@@ -60,15 +60,11 @@ export default function LogWorkoutPage({
   const [rpe, setRpe] = useState(5);
 
   const handleSubmit = async () => {
-    // Don't block if user isn't set yet - try to save anyway
-    // If it fails, Supabase will show the error
-
     setIsSaving(true);
 
     try {
       if (!user) {
-        // User not authenticated - fall back to localStorage
-        console.warn('User not authenticated, using localStorage fallback');
+        console.warn("User not authenticated, using localStorage fallback");
 
         let workout: any;
 
@@ -76,8 +72,8 @@ export default function LogWorkoutPage({
           workout = {
             id: Date.now().toString(),
             name: selectedStrengthExercise.name,
-            sets: selectedStrengthExercise.sets,
-            reps: selectedStrengthExercise.reps,
+            sets: customMode ? [customWeight, customWeight, customWeight] : selectedStrengthExercise.sets,
+            reps: customMode ? [10, 10, 10] : selectedStrengthExercise.reps,
             weightKg: customMode
               ? [customWeight]
               : selectedStrengthExercise.weightKg,
@@ -115,8 +111,8 @@ export default function LogWorkoutPage({
       if (workoutType === "strength") {
         workoutData = {
           user_id: user.id,
-          type: 'strength',
-          date: new Date().toISOString().split('T')[0],
+          type: "strength",
+          date: new Date().toISOString().split("T")[0],
           duration_minutes: null,
           distance_meters: null,
           notes: null,
@@ -124,17 +120,16 @@ export default function LogWorkoutPage({
       } else {
         workoutData = {
           user_id: user.id,
-          type: 'cardio',
-          date: new Date().toISOString().split('T')[0],
+          type: "cardio",
+          date: new Date().toISOString().split("T")[0],
           duration_minutes: customMode ? customDuration : Math.round(selectedCardioExercise.durationSeconds / 60),
           distance_meters: customMode && customDistance > 0 ? customDistance * 1000 : selectedCardioExercise.distanceMeters || null,
           notes: null,
         };
       }
 
-      // Create workout in Supabase
       const { data: workout, error: workoutError } = await supabase
-        .from('workouts')
+        .from("workouts")
         .insert(workoutData)
         .select()
         .single();
@@ -142,9 +137,8 @@ export default function LogWorkoutPage({
       if (workoutError) throw workoutError;
 
       if (workoutType === "strength") {
-        // Insert strength exercises
         const { error: exercisesError } = await supabase
-          .from('strength_exercises')
+          .from("strength_exercises")
           .insert({
             workout_id: workout.id,
             exercise_name: selectedStrengthExercise.name,
@@ -156,9 +150,8 @@ export default function LogWorkoutPage({
 
         if (exercisesError) throw exercisesError;
       } else {
-        // Insert cardio exercise
         const { error: exercisesError } = await supabase
-          .from('cardio_exercises')
+          .from("cardio_exercises")
           .insert({
             workout_id: workout.id,
             exercise_name: selectedCardioExercise.name,
@@ -174,8 +167,8 @@ export default function LogWorkoutPage({
       onWorkoutSaved();
       onBack();
     } catch (error) {
-      console.error('Error saving workout:', error);
-      alert('Failed to save workout. Please try again.');
+      console.error("Error saving workout:", error);
+      alert("Failed to save workout. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -190,7 +183,6 @@ export default function LogWorkoutPage({
 
   return (
     <div className="min-h-screen px-4 py-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3 pt-20 pb-4">
         <button
           onClick={onBack}
@@ -213,7 +205,6 @@ export default function LogWorkoutPage({
         <h1 className="text-xl font-bold text-text-primary">Log Workout</h1>
       </div>
 
-      {/* Workout Type Toggle */}
       <div className="flex bg-surface/50 rounded-xl p-1">
         <button
           onClick={() => {
@@ -243,7 +234,6 @@ export default function LogWorkoutPage({
         </button>
       </div>
 
-      {/* Quick Add */}
       <div className="mb-4">
         <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-3">
           Quick Add
@@ -283,7 +273,6 @@ export default function LogWorkoutPage({
         </div>
       </div>
 
-      {/* Customize */}
       <div className="mb-4">
         <label className="flex items-center gap-2 mb-3">
           <input
@@ -339,7 +328,6 @@ export default function LogWorkoutPage({
           </div>
         )}
 
-        {/* RPE Slider */}
         <div className="flex items-center gap-2 mt-4">
           <div className="flex-1">
             <label className="text-xs text-text-secondary">RPE</label>
@@ -359,7 +347,123 @@ export default function LogWorkoutPage({
         </div>
       </div>
 
-      {/* Save Button */}
+      <div className="bg-surface rounded-2xl shadow-sm p-6">
+        <h2 className="text-lg font-bold text-text-primary mb-4">
+          Workout Preview
+        </h2>
+        <div className="space-y-4">
+          {workoutType === "strength" ? (
+            <>
+              <div className="bg-primary/10 rounded-xl p-4">
+                <div className="text-center">
+                  <div className="text-3xl mb-2">💪</div>
+                  <h3 className="text-xl font-bold text-primary">
+                    {selectedStrengthExercise.name}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center">
+                  <p className="text-xs text-text-secondary mb-1">Sets</p>
+                  <p className="text-3xl font-bold text-primary">
+                    {customMode ? 3 : selectedStrengthExercise.sets.length}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-text-secondary mb-1">Reps</p>
+                  <p className="text-3xl font-bold text-primary">
+                    {customMode ? 10 : selectedStrengthExercise.reps[0]}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-text-secondary mb-1">Weight</p>
+                  <p className="text-3xl font-bold text-primary">
+                    {customMode ? customWeight : selectedStrengthExercise.weightKg[0]}
+                    <span className="text-lg text-text-secondary"> kg</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-accent/20 rounded-lg p-3 mt-3">
+                <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                  <div>
+                    <span className="text-text-secondary">Total Sets:</span>
+                    <span className="font-semibold ml-1">
+                      {customMode ? 3 : selectedStrengthExercise.sets.length}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary">Total Reps:</span>
+                    <span className="font-semibold ml-1">
+                      {customMode ? 30 : selectedStrengthExercise.sets.reduce((a, b) => a + b, 0)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary">RPE:</span>
+                    <span className="font-semibold ml-1">
+                      {rpe}/10
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-primary/10 rounded-xl p-4">
+                <div className="text-center">
+                  <div className="text-3xl mb-2">🏃</div>
+                  <h3 className="text-xl font-bold text-primary">
+                    {selectedCardioExercise.name}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <p className="text-xs text-text-secondary mb-1">Duration</p>
+                  <p className="text-3xl font-bold text-primary">
+                    {customMode ? customDuration : Math.round(selectedCardioExercise.durationSeconds / 60)}
+                    <span className="text-lg text-text-secondary"> min</span>
+                  </p>
+                </div>
+                {selectedCardioExercise.distanceMeters && (
+                  <div className="text-center">
+                    <p className="text-xs text-text-secondary mb-1">Distance</p>
+                    <p className="text-3xl font-bold text-primary">
+                      {customMode && customDistance > 0 ? customDistance : selectedCardioExercise.distanceMeters / 1000}
+                      <span className="text-lg text-text-secondary"> km</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-accent/20 rounded-lg p-3 mt-3">
+                <div className="grid grid-cols-2 gap-2 text-center text-sm">
+                  <div>
+                    <span className="text-text-secondary">RPE:</span>
+                    <span className="font-semibold ml-1">
+                      {rpe}/10
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary">Pace:</span>
+                    <span className="font-semibold ml-1">
+                      {customMode && selectedCardioExercise.distanceMeters && customDistance > 0
+                        ? (customDistance * 1000 / (customDuration * 60)).toFixed(1)
+                        : selectedCardioExercise.distanceMeters
+                          ? (selectedCardioExercise.distanceMeters / selectedCardioExercise.durationSeconds * 60).toFixed(1)
+                          : "-"}
+                    </span>
+                    <span className="text-text-secondary"> m/min</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
       <button
         onClick={handleSubmit}
         disabled={isSaving}
