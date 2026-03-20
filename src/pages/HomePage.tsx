@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import ThemeSwitcher from "../components/ThemeSwitcher";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 type Page = "home" | "log" | "history" | "scheduler";
 
@@ -18,38 +20,80 @@ interface WeeklyPlan {
   daysPerWeek: number;
   workouts: WorkoutDay[];
   startOfWeek: string;
+  id: string;
 }
 
 export default function HomePage({ user, onNavigate }: HomePageProps) {
+  const { user: authUser } = useAuth();
   const [showThemeSwitcher, setShowThemeSwitcher] = useState(false);
-  const [workoutCount] = useState(() => {
-    const workouts = localStorage.getItem("workouts");
-    return workouts ? JSON.parse(workouts).length : 0;
-  });
-
+  const [workoutCount, setWorkoutCount] = useState(0);
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan | null>(null);
   const [todayWorkout, setTodayWorkout] = useState<WorkoutDay | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem("weeklyPlan");
-    if (saved) {
-      const plan = JSON.parse(saved);
-      setWeeklyPlan(plan);
+    async function loadData() {
+      if (!authUser) return;
 
-      const days = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ];
-      const today = days[new Date().getDay()];
-      const workout = plan.workouts.find((w: WorkoutDay) => w.day === today);
-      setTodayWorkout(workout || null);
+      try {
+        setLoading(true);
+
+        // Fetch workout count
+        const { count } = await supabase
+          .from('workouts')
+          .select('*', { count: 'exact', head: false })
+          .eq('user_id', authUser.id);
+
+        setWorkoutCount(count || 0);
+
+        // Fetch latest weekly plan
+        const { data: plans } = await supabase
+          .from('ai_plans')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (plans && plans.length > 0) {
+          const plan = plans[0];
+          const workouts = JSON.parse(plan.exercises);
+
+          const days = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ];
+          const today = days[new Date().getDay()];
+          const workout = workouts.find((w: WorkoutDay) => w.day === today);
+          setTodayWorkout(workout || null);
+          setWeeklyPlan({ ...plan, workouts });
+        } else {
+          setWeeklyPlan(null);
+          setTodayWorkout(null);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, []);
+
+    loadData();
+  }, [authUser]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen px-4 py-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin text-4xl">⏳</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen px-4 py-6 space-y-6">

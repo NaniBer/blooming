@@ -5,6 +5,7 @@ import LogWorkoutPage from './pages/LogWorkoutPage'
 import HistoryPage from './pages/HistoryPage'
 import SchedulerPage from './pages/SchedulerPage'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { AuthProvider } from './contexts/AuthContext'
 
 type Page = 'home' | 'log' | 'history' | 'scheduler'
 
@@ -90,9 +91,11 @@ function App() {
 
   return (
     <ThemeProvider>
-      <div className="app">
-        {renderPage()}
-      </div>
+      <AuthProvider initialUser={user}>
+        <div className="app">
+          {renderPage()}
+        </div>
+      </AuthProvider>
     </ThemeProvider>
   )
 }

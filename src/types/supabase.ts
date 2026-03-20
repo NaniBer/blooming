@@ -6,6 +6,7 @@ export interface Profile {
   username: string | null
   first_name: string | null
   last_name: string | null
+  theme_preference: string | null
   created_at: string
   updated_at: string
 }

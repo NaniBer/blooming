@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 interface SchedulerPageProps {
   onBack: () => void;
@@ -13,6 +15,7 @@ interface WorkoutDay {
 }
 
 interface WeeklyPlan {
+  id: string;
   daysPerWeek: number;
   workouts: WorkoutDay[];
   startOfWeek: string;
@@ -37,6 +40,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export default function SchedulerPage({ onBack, editMode = false }: SchedulerPageProps) {
+  const { user } = useAuth();
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [hasPlan, setHasPlan] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<WeeklyPlan | null>(null);
@@ -48,26 +52,50 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
   const [isLocalEdit, setIsLocalEdit] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("weeklyPlan");
-    if (saved) {
-      const plan = JSON.parse(saved);
-      setHasPlan(true);
-      setCurrentPlan(plan);
-      const types: Record<string, "upper" | "lower" | "fullBody" | "cardio"> =
-        {};
-      plan.workouts.forEach((w: any) => {
-        types[w.day] = w.type === "mix" ? "fullBody" : w.type;
-      });
-      setSelectedTypes(types);
+    async function loadPlan() {
+      if (!user) return;
 
-      // If edit mode is enabled, pre-fill the form
-      if (editMode) {
-        const days = plan.workouts.map((w: any) => w.day);
-        setSelectedDays(days);
-        setIsEditing(true);
+      try {
+        // Fetch latest plan from Supabase
+        const { data: plans, error } = await supabase
+          .from('ai_plans')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        if (plans && plans.length > 0) {
+          const plan = plans[0];
+          const workouts = JSON.parse(plan.exercises);
+
+          const types: Record<string, "upper" | "lower" | "fullBody" | "cardio"> = {};
+          workouts.forEach((w: any) => {
+            types[w.day] = w.type === "mix" ? "fullBody" : w.type;
+          });
+          setSelectedTypes(types);
+
+          setHasPlan(true);
+          setCurrentPlan({ ...plan, workouts });
+
+          // If edit mode is enabled, pre-fill the form
+          if (editMode) {
+            const days = workouts.map((w: any) => w.day);
+            setSelectedDays(days);
+            setIsEditing(true);
+          }
+        } else {
+          setHasPlan(false);
+          setCurrentPlan(null);
+        }
+      } catch (error) {
+        console.error('Error loading plan:', error);
       }
     }
-  }, [editMode]);
+
+    loadPlan();
+  }, [user, editMode]);
 
   const handleDayToggle = (day: string) => {
     setSelectedDays((prev) => {
@@ -91,63 +119,134 @@ export default function SchedulerPage({ onBack, editMode = false }: SchedulerPag
     setSelectedTypes((prev) => ({ ...prev, [day]: type }));
   };
 
-  const handleCreatePlan = () => {
+  const handleCreatePlan = async () => {
     if (selectedDays.length === 0) {
       alert("Please select at least one workout day");
       return;
     }
 
+    if (selectedDays.length === 0) {
+      alert("Please select at least one workout day");
+      return;
+    }
+
+    if (!user) {
+      alert('Please wait while we verify your account');
+      return;
+    }
+
     setIsSaving(true);
 
-    const workouts: WorkoutDay[] = selectedDays.map((day) => {
-      const type = selectedTypes[day] || "upper";
-      return {
-        day,
-        type,
-        exercises: EXERCISES[type],
-        completed: false,
-      };
-    });
+    try {
+      const workouts: WorkoutDay[] = selectedDays.map((day) => {
+        const type = selectedTypes[day] || "upper";
+        return {
+          day,
+          type,
+          exercises: EXERCISES[type],
+          completed: false,
+        };
+      });
 
-    const today = new Date();
-    const startOfWeek = getStartOfWeek(today);
-
-    const plan: WeeklyPlan = {
-      daysPerWeek: selectedDays.length,
-      workouts,
-      startOfWeek: startOfWeek.toISOString(),
-      weekNumber: Math.floor(
+      const today = new Date();
+      const planDate = today.toISOString().split('T')[0];
+      const weekNumber = Math.floor(
         (today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) /
           (7 * 24 * 60 * 60 * 1000),
-      ),
-    };
+      );
 
-    localStorage.setItem("weeklyPlan", JSON.stringify(plan));
-    setCurrentPlan(plan);
-    setHasPlan(true);
-    setIsSaving(false);
+      // Create or update plan in Supabase
+      const planData = {
+        user_id: user.id,
+        plan_date: planDate,
+        workout_type: 'weekly',
+        exercises: JSON.stringify(workouts),
+        notes: null,
+        is_completed: false,
+      };
 
-    const message = isEditing ? "✅ Plan edited successfully!" : "✅ Plan created successfully!";
-    alert(message);
+      let planId: string;
 
-    setTimeout(() => {
-      setIsEditing(false);
-      if (isLocalEdit) {
-        setIsLocalEdit(false);
+      if (isEditing && currentPlan) {
+        // Update existing plan
+        const { data, error } = await supabase
+          .from('ai_plans')
+          .update(planData)
+          .eq('id', currentPlan.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        planId = data.id;
       } else {
-        onBack();
+        // Create new plan
+        const { data, error } = await supabase
+          .from('ai_plans')
+          .insert(planData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        planId = data.id;
       }
-    }, 50);
+
+      // Add exercise list to the plan
+      const plan: WeeklyPlan = {
+        daysPerWeek: selectedDays.length,
+        workouts,
+        startOfWeek: getStartOfWeek(today).toISOString(),
+        weekNumber,
+        id: planId,
+      };
+
+      setCurrentPlan(plan);
+      setHasPlan(true);
+      setIsSaving(false);
+
+      const message = isEditing ? "✅ Plan edited successfully!" : "✅ Plan created successfully!";
+      alert(message);
+
+      setTimeout(() => {
+        setIsEditing(false);
+        if (isLocalEdit) {
+          setIsLocalEdit(false);
+        } else {
+          onBack();
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      alert('Failed to save plan. Please try again.');
+      setIsSaving(false);
+    }
   };
 
-  const handleResetPlan = () => {
+  const handleResetPlan = async () => {
+    if (!user) {
+      alert('Please wait while we verify your account');
+      return;
+    }
+
     if (confirm("Delete current plan and create a new one?")) {
-      localStorage.removeItem("weeklyPlan");
-      setHasPlan(false);
-      setCurrentPlan(null);
-      setSelectedDays([]);
-      setSelectedTypes({});
-      setIsEditing(false);
+      try {
+        if (currentPlan) {
+          const { error } = await supabase
+            .from('ai_plans')
+            .delete()
+            .eq('id', currentPlan.id);
+
+          if (error) throw error;
+        }
+
+        setHasPlan(false);
+        setCurrentPlan(null);
+        setSelectedDays([]);
+        setSelectedTypes({});
+        setIsEditing(false);
+      } catch (error) {
+        console.error('Error deleting plan:', error);
+        alert('Failed to delete plan. Please try again.');
+      }
     }
   };
 

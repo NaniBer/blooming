@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Workout } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 interface LogWorkoutPageProps {
   onBack: () => void;
@@ -27,6 +28,7 @@ const STRENGTH_EXERCISES: StrengthExerciseTemplate[] = [
   { name: "Pull Up", sets: [3], reps: [8], weightKg: [80] },
   { name: "Cable Fly", sets: [3], reps: [10], weightKg: [6] },
   { name: "Leg Press", sets: [3], reps: [8], weightKg: [90] },
+  { name: "Row", sets: [3], reps: [10], weightKg: [50] },
 ];
 
 const CARDIO_EXERCISES: CardioExerciseTemplate[] = [
@@ -44,6 +46,8 @@ export default function LogWorkoutPage({
   onBack,
   onWorkoutSaved,
 }: LogWorkoutPageProps) {
+  const { user } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
   const [workoutType, setWorkoutType] = useState<WorkoutType>("strength");
   const [selectedStrengthExercise, setSelectedStrengthExercise] =
     useState<StrengthExerciseTemplate>(STRENGTH_EXERCISES[0]!);
@@ -55,44 +59,84 @@ export default function LogWorkoutPage({
   const [customDistance, setCustomDistance] = useState(0);
   const [rpe, setRpe] = useState(5);
 
-  const handleSubmit = () => {
-    let workout: Workout;
-
-    if (workoutType === "strength") {
-      workout = {
-        id: Date.now().toString(),
-        name: selectedStrengthExercise.name,
-        sets: selectedStrengthExercise.sets,
-        reps: selectedStrengthExercise.reps,
-        weightKg: customMode
-          ? [customWeight]
-          : selectedStrengthExercise.weightKg,
-        rpe,
-        date: new Date(),
-      };
-    } else {
-      workout = {
-        id: Date.now().toString(),
-        name: selectedCardioExercise.name,
-        durationSeconds: customMode
-          ? customDuration * 60
-          : selectedCardioExercise.durationSeconds,
-        distanceMeters:
-          customMode && customDistance > 0
-            ? customDistance * 1000
-            : selectedCardioExercise.distanceMeters,
-        rpe,
-        date: new Date(),
-      };
+  const handleSubmit = async () => {
+    if (!user) {
+      alert('Please wait while we verify your account');
+      return;
     }
 
-    const existing = localStorage.getItem("workouts");
-    const workouts = existing ? JSON.parse(existing) : [];
-    workouts.push(workout);
-    localStorage.setItem("workouts", JSON.stringify(workouts));
+    setIsSaving(true);
 
-    onWorkoutSaved();
-    onBack();
+    try {
+      let workoutData: any;
+
+      if (workoutType === "strength") {
+        workoutData = {
+          user_id: user.id,
+          type: 'strength',
+          date: new Date().toISOString().split('T')[0],
+          duration_minutes: null,
+          distance_meters: null,
+          notes: null,
+        };
+      } else {
+        workoutData = {
+          user_id: user.id,
+          type: 'cardio',
+          date: new Date().toISOString().split('T')[0],
+          duration_minutes: customMode ? customDuration : Math.round(selectedCardioExercise.durationSeconds / 60),
+          distance_meters: customMode && customDistance > 0 ? customDistance * 1000 : selectedCardioExercise.distanceMeters || null,
+          notes: null,
+        };
+      }
+
+      // Create workout in Supabase
+      const { data: workout, error: workoutError } = await supabase
+        .from('workouts')
+        .insert(workoutData)
+        .select()
+        .single();
+
+      if (workoutError) throw workoutError;
+
+      if (workoutType === "strength") {
+        // Insert strength exercises
+        const { error: exercisesError } = await supabase
+          .from('strength_exercises')
+          .insert({
+            workout_id: workout.id,
+            exercise_name: selectedStrengthExercise.name,
+            sets: customMode ? [customWeight, customWeight, customWeight] : selectedStrengthExercise.sets,
+            reps: customMode ? [10, 10, 10] : selectedStrengthExercise.reps,
+            weight_kg: customMode ? [customWeight, customWeight, customWeight] : selectedStrengthExercise.weightKg,
+            rpe: rpe,
+          });
+
+        if (exercisesError) throw exercisesError;
+      } else {
+        // Insert cardio exercise
+        const { error: exercisesError } = await supabase
+          .from('cardio_exercises')
+          .insert({
+            workout_id: workout.id,
+            exercise_name: selectedCardioExercise.name,
+            distance_meters: customMode && customDistance > 0 ? customDistance * 1000 : selectedCardioExercise.distanceMeters || null,
+            duration_seconds: customMode ? customDuration * 60 : selectedCardioExercise.durationSeconds,
+            avg_heart_rate: null,
+            rpe: rpe,
+          });
+
+        if (exercisesError) throw exercisesError;
+      }
+
+      onWorkoutSaved();
+      onBack();
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      alert('Failed to save workout. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const exercises =
@@ -276,10 +320,20 @@ export default function LogWorkoutPage({
       {/* Save Button */}
       <button
         onClick={handleSubmit}
+        disabled={isSaving}
         className="w-full bg-primary hover:bg-secondary text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-95 flex items-center justify-center gap-2"
       >
-        <span className="text-xl">✓</span>
-        <span>Save Workout</span>
+        {isSaving ? (
+          <>
+            <span className="animate-spin">⏳</span>
+            <span>Saving...</span>
+          </>
+        ) : (
+          <>
+            <span className="text-xl">✓</span>
+            <span>Save Workout</span>
+          </>
+        )}
       </button>
     </div>
   );

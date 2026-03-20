@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Workout } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 interface HistoryPageProps {
   onBack: () => void;
@@ -10,31 +11,117 @@ export default function HistoryPage({
   onBack,
   onWorkoutDeleted,
 }: HistoryPageProps) {
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const { user } = useAuth();
+  const [workouts, setWorkouts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadWorkouts();
-  }, []);
+    async function loadWorkouts() {
+      if (!user) return;
 
-  const loadWorkouts = () => {
-    const stored = localStorage.getItem("workouts");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setWorkouts(
-        parsed.sort(
-          (a: Workout, b: Workout) =>
-            new Date(b.date).getTime() - new Date(a.date).getTime(),
-        ),
-      );
+      try {
+        setLoading(true);
+
+        // Fetch workouts with their exercises
+        const { data: workouts, error } = await supabase
+          .from('workouts')
+          .select(`
+            *,
+            strength_exercises!inner (
+              exercise_name,
+              sets,
+              reps,
+              weight_kg,
+              rpe
+            ),
+            cardio_exercises!inner (
+              exercise_name,
+              distance_meters,
+              duration_seconds,
+              rpe
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        // Transform data to match the expected format
+        const transformed = workouts?.map(w => {
+          let base = {
+            id: w.id,
+            date: w.date,
+          };
+
+          if (w.type === 'strength') {
+            const strengthEx = w.strength_exercises?.[0] || {};
+            return {
+              ...base,
+              name: strengthEx.exercise_name || 'Strength',
+              sets: strengthEx.sets || [],
+              reps: strengthEx.reps || [],
+              weightKg: strengthEx.weight_kg || [],
+              rpe: strengthEx.rpe,
+            };
+          } else {
+            const cardioEx = w.cardio_exercises?.[0] || {};
+            return {
+              ...base,
+              name: cardioEx.exercise_name || 'Cardio',
+              durationSeconds: cardioEx.duration_seconds || 0,
+              distanceMeters: cardioEx.distance_meters,
+              rpe: cardioEx.rpe,
+            };
+          }
+        }) || [];
+
+        setWorkouts(transformed);
+      } catch (error) {
+        console.error('Error loading workouts:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadWorkouts();
+  }, [user]);
+
+  const handleDelete = async (workoutId: string) => {
+    if (confirm("Delete this workout?")) {
+      try {
+        // Delete workout (cascade will delete exercises)
+        const { error } = await supabase
+          .from('workouts')
+          .delete()
+          .eq('id', workoutId);
+
+        if (error) throw error;
+
+        setWorkouts(workouts.filter(w => w.id !== workoutId));
+        onWorkoutDeleted();
+      } catch (error) {
+        console.error('Error deleting workout:', error);
+        alert('Failed to delete workout. Please try again.');
+      }
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Delete this workout?")) {
-      const updated = workouts.filter((w) => w.id !== id);
-      setWorkouts(updated);
-      localStorage.setItem("workouts", JSON.stringify(updated));
-      onWorkoutDeleted();
+  const handleClearAll = async () => {
+    if (confirm("Delete all workouts? This cannot be undone.")) {
+      try {
+        const { error } = await supabase
+          .from('workouts')
+          .delete()
+          .eq('user_id', user!.id);
+
+        if (error) throw error;
+
+        setWorkouts([]);
+        onWorkoutDeleted();
+      } catch (error) {
+        console.error('Error clearing workouts:', error);
+        alert('Failed to clear workouts. Please try again.');
+      }
     }
   };
 
@@ -46,6 +133,16 @@ export default function HistoryPage({
       year: "numeric",
     });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen px-4 py-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin text-4xl">⏳</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen px-4 py-6 space-y-6">
@@ -183,13 +280,7 @@ export default function HistoryPage({
       {/* Clear All */}
       {workouts.length > 0 && (
         <button
-          onClick={() => {
-            if (confirm("Delete all workouts? This cannot be undone.")) {
-              localStorage.removeItem("workouts");
-              setWorkouts([]);
-              onWorkoutDeleted();
-            }
-          }}
+          onClick={handleClearAll}
           className="w-full text-red-400 hover:text-red-500 text-sm py-2 transition-colors"
         >
           Clear All History
