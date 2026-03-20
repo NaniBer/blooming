@@ -24,7 +24,7 @@ interface WeeklyPlan {
 }
 
 export default function HomePage({ user, onNavigate }: HomePageProps) {
-  const { user: authUser } = useAuth();
+  const { user: authUser, loading: authLoading, error: authError } = useAuth();
   const [showThemeSwitcher, setShowThemeSwitcher] = useState(false);
   const [workoutCount, setWorkoutCount] = useState(0);
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan | null>(null);
@@ -33,7 +33,11 @@ export default function HomePage({ user, onNavigate }: HomePageProps) {
 
   useEffect(() => {
     async function loadData() {
-      if (!authUser) return;
+      // Don't try to load from Supabase if there's an auth error
+      if (authError || !authUser) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
@@ -77,19 +81,42 @@ export default function HomePage({ user, onNavigate }: HomePageProps) {
         }
       } catch (error) {
         console.error('Error loading data:', error);
+        // Don't show error to user, just log it
       } finally {
         setLoading(false);
       }
     }
 
     loadData();
-  }, [authUser]);
+  }, [authUser, authError]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen px-4 py-6 space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin text-4xl">⏳</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen px-4 py-6 space-y-6">
+        <div className="bg-surface rounded-2xl shadow-sm p-8 text-center">
+          <div className="text-4xl mb-3">⚠️</div>
+          <h2 className="text-xl font-bold text-primary mb-3">Database Connection Error</h2>
+          <p className="text-text-secondary mb-4">{authError}</p>
+          <div className="bg-accent/20 rounded-xl p-4 text-sm text-left">
+            <p className="font-semibold text-accent mb-2">To fix this:</p>
+            <ol className="list-decimal list-inside space-y-1 text-text-secondary">
+              <li>Go to your Supabase project dashboard</li>
+              <li>Navigate to SQL Editor</li>
+              <li>Copy and run the schema from supabase/schema.sql</li>
+              <li>Make sure .env file has your Supabase credentials</li>
+              <li>Restart the dev server: npm run dev</li>
+            </ol>
+          </div>
         </div>
       </div>
     );
