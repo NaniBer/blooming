@@ -18,6 +18,8 @@ interface CardioExerciseTemplate {
   name: string;
   durationSeconds: number;
   distanceMeters?: number;
+  inclination?: number;
+  pace?: number;
 }
 
 const STRENGTH_EXERCISES: StrengthExerciseTemplate[] = [
@@ -32,7 +34,7 @@ const STRENGTH_EXERCISES: StrengthExerciseTemplate[] = [
 ];
 
 const CARDIO_EXERCISES: CardioExerciseTemplate[] = [
-  { name: "Treadmill", durationSeconds: 1800, distanceMeters: 3000 },
+  { name: "Treadmill", durationSeconds: 1800, distanceMeters: 3000, inclination: 0, pace: 6 },
   { name: "Cycling", durationSeconds: 2400, distanceMeters: 12000 },
   { name: "Elliptical", durationSeconds: 1500 },
   { name: "Rowing", durationSeconds: 1200, distanceMeters: 2000 },
@@ -63,7 +65,7 @@ export default function LogWorkoutPage({
     const saved = localStorage.getItem("customExerciseSettings");
     return saved ? JSON.parse(saved) : {};
   });
-  const [customCardioSettings, setCustomCardioSettings] = useState<Record<string, { duration: number; distance: number }>>(() => {
+  const [customCardioSettings, setCustomCardioSettings] = useState<Record<string, { duration: number; distance: number; inclination?: number; pace?: number }>>(() => {
     const saved = localStorage.getItem("customCardioSettings");
     return saved ? JSON.parse(saved) : {};
   });
@@ -84,10 +86,14 @@ export default function LogWorkoutPage({
   const initialCardioSettings = customCardioSettings[CARDIO_EXERCISES[0]!.name] || {
     duration: CARDIO_EXERCISES[0]!.durationSeconds / 60,
     distance: CARDIO_EXERCISES[0]!.distanceMeters ? CARDIO_EXERCISES[0]!.distanceMeters / 1000 : 0,
+    inclination: CARDIO_EXERCISES[0]!.inclination,
+    pace: CARDIO_EXERCISES[0]!.pace,
   };
 
   const [editingDuration, setEditingDuration] = useState(initialCardioSettings.duration);
   const [editingDistance, setEditingDistance] = useState(initialCardioSettings.distance);
+  const [editingInclination, setEditingInclination] = useState(initialCardioSettings.inclination ?? 0);
+  const [editingPace, setEditingPace] = useState(initialCardioSettings.pace ?? 0);
 
   const cardioCustomSettings = customCardioSettings[selectedCardioExercise.name];
   const hasCardioCustomSettings = cardioCustomSettings !== undefined;
@@ -121,6 +127,12 @@ export default function LogWorkoutPage({
               customMode && editingDistance > 0
                 ? editingDistance * 1000
                 : selectedCardioExercise.distanceMeters,
+            inclination: selectedCardioExercise.name === "Treadmill" 
+              ? (customMode || hasCardioCustomSettings ? editingInclination : selectedCardioExercise.inclination)
+              : undefined,
+            pace: selectedCardioExercise.name === "Treadmill"
+              ? (customMode || hasCardioCustomSettings ? editingPace : selectedCardioExercise.pace)
+              : undefined,
             date: new Date(),
           };
         }
@@ -200,6 +212,12 @@ export default function LogWorkoutPage({
               ? editingDuration * 60
               : selectedCardioExercise.durationSeconds,
             avg_heart_rate: null,
+            inclination: selectedCardioExercise.name === "Treadmill"
+              ? (customMode || hasCardioCustomSettings ? editingInclination : selectedCardioExercise.inclination) || null
+              : null,
+            pace: selectedCardioExercise.name === "Treadmill"
+              ? (customMode || hasCardioCustomSettings ? editingPace : selectedCardioExercise.pace) || null
+              : null,
           });
 
         if (exercisesError) throw exercisesError;
@@ -303,6 +321,8 @@ export default function LogWorkoutPage({
                   const customSettings = customCardioSettings[cardioEx.name];
                   setEditingDuration(customSettings?.duration ?? cardioEx.durationSeconds / 60);
                   setEditingDistance(customSettings?.distance ?? (cardioEx.distanceMeters ? cardioEx.distanceMeters / 1000 : 0));
+                  setEditingInclination(customSettings?.inclination ?? cardioEx.inclination ?? 0);
+                  setEditingPace(customSettings?.pace ?? cardioEx.pace ?? 0);
                 }
               }}
               className={`p-4 rounded-xl border-2 transition-all active:scale-95 hover:scale-100 ${
@@ -576,6 +596,58 @@ export default function LogWorkoutPage({
                 )}
               </div>
 
+              {selectedCardioExercise.name === "Treadmill" && (
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  {cardioEditMode ? (
+                    <div className="bg-surface/70 rounded-lg p-3">
+                      <div className="text-xs text-text-secondary mb-2">Inclination</div>
+                      <input
+                        type="number"
+                        value={editingInclination}
+                        onChange={(e) => setEditingInclination(parseFloat(e.target.value))}
+                        className="w-full font-semibold text-text-primary bg-transparent text-center focus:outline-none"
+                        min="0"
+                        max="15"
+                        step="0.5"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-surface/50 rounded-lg p-3 text-center">
+                      <div className="text-xs text-text-secondary">Inclination</div>
+                      <div className="font-semibold text-text-primary">
+                        {customMode || hasCardioCustomSettings
+                          ? editingInclination
+                          : selectedCardioExercise.inclination ?? 0}
+                        <span className="text-text-secondary text-xs"> %</span>
+                      </div>
+                    </div>
+                  )}
+                  {cardioEditMode ? (
+                    <div className="bg-surface/70 rounded-lg p-3">
+                      <div className="text-xs text-text-secondary mb-2">Target Pace</div>
+                      <input
+                        type="number"
+                        value={editingPace}
+                        onChange={(e) => setEditingPace(parseFloat(e.target.value))}
+                        className="w-full font-semibold text-text-primary bg-transparent text-center focus:outline-none"
+                        min="0"
+                        step="0.1"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-surface/50 rounded-lg p-3 text-center">
+                      <div className="text-xs text-text-secondary">Target Pace</div>
+                      <div className="font-semibold text-text-primary">
+                        {customMode || hasCardioCustomSettings
+                          ? editingPace
+                          : selectedCardioExercise.pace ?? 0}
+                        <span className="text-text-secondary text-xs"> min/km</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="bg-surface/50 rounded-lg p-3 text-center">
                 <div className="text-xs text-text-secondary">Pace</div>
                 <div className="font-semibold text-text-primary">
@@ -608,6 +680,8 @@ export default function LogWorkoutPage({
                       [selectedCardioExercise.name]: {
                         duration: editingDuration,
                         distance: editingDistance,
+                        inclination: selectedCardioExercise.name === "Treadmill" ? editingInclination : undefined,
+                        pace: selectedCardioExercise.name === "Treadmill" ? editingPace : undefined,
                       },
                     };
                     setCustomCardioSettings(newSettings);
