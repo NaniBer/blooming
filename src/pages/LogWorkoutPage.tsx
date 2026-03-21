@@ -58,8 +58,13 @@ export default function LogWorkoutPage({
   const [customDuration, setCustomDuration] = useState(30);
   const [customDistance, setCustomDistance] = useState(0);
   const [editMode, setEditMode] = useState(false);
+  const [cardioEditMode, setCardioEditMode] = useState(false);
   const [customExerciseSettings, setCustomExerciseSettings] = useState<Record<string, { sets: number; reps: number; weight: number }>>(() => {
     const saved = localStorage.getItem("customExerciseSettings");
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [customCardioSettings, setCustomCardioSettings] = useState<Record<string, { duration: number; distance: number }>>(() => {
+    const saved = localStorage.getItem("customCardioSettings");
     return saved ? JSON.parse(saved) : {};
   });
 
@@ -75,6 +80,17 @@ export default function LogWorkoutPage({
 
   const customSettings = customExerciseSettings[selectedStrengthExercise.name];
   const hasCustomSettings = customSettings !== undefined;
+
+  const initialCardioSettings = customCardioSettings[CARDIO_EXERCISES[0]!.name] || {
+    duration: CARDIO_EXERCISES[0]!.durationSeconds / 60,
+    distance: CARDIO_EXERCISES[0]!.distanceMeters ? CARDIO_EXERCISES[0]!.distanceMeters / 1000 : 0,
+  };
+
+  const [editingDuration, setEditingDuration] = useState(initialCardioSettings.duration);
+  const [editingDistance, setEditingDistance] = useState(initialCardioSettings.distance);
+
+  const cardioCustomSettings = customCardioSettings[selectedCardioExercise.name];
+  const hasCardioCustomSettings = cardioCustomSettings !== undefined;
 
   const handleSubmit = async () => {
     setIsSaving(true);
@@ -99,11 +115,11 @@ export default function LogWorkoutPage({
             id: Date.now().toString(),
             name: selectedCardioExercise.name,
             durationSeconds: customMode
-              ? customDuration * 60
+              ? editingDuration * 60
               : selectedCardioExercise.durationSeconds,
             distanceMeters:
-              customMode && customDistance > 0
-                ? customDistance * 1000
+              customMode && editingDistance > 0
+                ? editingDistance * 1000
                 : selectedCardioExercise.distanceMeters,
             date: new Date(),
           };
@@ -136,11 +152,11 @@ export default function LogWorkoutPage({
           type: "cardio",
           date: new Date().toISOString().split("T")[0],
           duration_minutes: customMode
-            ? customDuration
+            ? editingDuration
             : Math.round(selectedCardioExercise.durationSeconds / 60),
           distance_meters:
-            customMode && customDistance > 0
-              ? customDistance * 1000
+            customMode && editingDistance > 0
+              ? editingDistance * 1000
               : selectedCardioExercise.distanceMeters || null,
           notes: null,
         };
@@ -177,11 +193,11 @@ export default function LogWorkoutPage({
             workout_id: workout.id,
             exercise_name: selectedCardioExercise.name,
             distance_meters:
-              customMode && customDistance > 0
-                ? customDistance * 1000
+              customMode && editingDistance > 0
+                ? editingDistance * 1000
                 : selectedCardioExercise.distanceMeters || null,
             duration_seconds: customMode
-              ? customDuration * 60
+              ? editingDuration * 60
               : selectedCardioExercise.durationSeconds,
             avg_heart_rate: null,
           });
@@ -235,6 +251,8 @@ export default function LogWorkoutPage({
           onClick={() => {
             setWorkoutType("strength");
             setCustomMode(false);
+            setEditMode(false);
+            setCardioEditMode(false);
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
             workoutType === "strength"
@@ -248,6 +266,8 @@ export default function LogWorkoutPage({
           onClick={() => {
             setWorkoutType("cardio");
             setCustomMode(false);
+            setEditMode(false);
+            setCardioEditMode(false);
           }}
           className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
             workoutType === "cardio"
@@ -269,6 +289,7 @@ export default function LogWorkoutPage({
               key={idx}
               onClick={() => {
                 setEditMode(false);
+                setCardioEditMode(false);
                 if (workoutType === "strength") {
                   const strengthEx = exercise as StrengthExerciseTemplate;
                   setSelectedStrengthExercise(strengthEx);
@@ -277,7 +298,11 @@ export default function LogWorkoutPage({
                   setEditingReps(customSettings?.reps ?? strengthEx.reps[0]);
                   setEditingWeight(customSettings?.weight ?? strengthEx.weightKg[0]);
                 } else {
-                  setSelectedCardioExercise(exercise as CardioExerciseTemplate);
+                  const cardioEx = exercise as CardioExerciseTemplate;
+                  setSelectedCardioExercise(cardioEx);
+                  const customSettings = customCardioSettings[cardioEx.name];
+                  setEditingDuration(customSettings?.duration ?? cardioEx.durationSeconds / 60);
+                  setEditingDistance(customSettings?.distance ?? (cardioEx.distanceMeters ? cardioEx.distanceMeters / 1000 : 0));
                 }
               }}
               className={`p-4 rounded-xl border-2 transition-all active:scale-95 hover:scale-100 ${
@@ -494,41 +519,72 @@ export default function LogWorkoutPage({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-primary/10 rounded-xl p-4 text-center">
-                  <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">
-                    Duration
+                {cardioEditMode ? (
+                  <div className="bg-primary/20 rounded-xl p-4">
+                    <div className="text-xs text-text-secondary uppercase tracking-wide mb-2">
+                      Duration
+                    </div>
+                    <input
+                      type="number"
+                      value={editingDuration}
+                      onChange={(e) => setEditingDuration(parseFloat(e.target.value))}
+                      className="w-full text-2xl font-bold text-primary bg-transparent text-center focus:outline-none"
+                      min="1"
+                    />
                   </div>
-                  <div className="text-2xl font-bold text-primary">
-                    {customMode
-                      ? customDuration
-                      : Math.round(selectedCardioExercise.durationSeconds / 60)}
-                    min
-                  </div>
-                </div>
-                {selectedCardioExercise.distanceMeters && (
-                  <div className="bg-accent/20 rounded-xl p-4 text-center">
+                ) : (
+                  <div className="bg-primary/10 rounded-xl p-4 text-center">
                     <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">
-                      Distance
+                      Duration
                     </div>
-                    <div className="text-2xl font-bold text-accent">
-                      {customMode && customDistance > 0
-                        ? customDistance
-                        : selectedCardioExercise.distanceMeters / 1000}
-                      km
+                    <div className="text-2xl font-bold text-primary">
+                      {customMode || hasCardioCustomSettings
+                        ? editingDuration
+                        : Math.round(selectedCardioExercise.durationSeconds / 60)}
+                      min
                     </div>
                   </div>
+                )}
+                {selectedCardioExercise.distanceMeters && (
+                  cardioEditMode ? (
+                    <div className="bg-accent/30 rounded-xl p-4">
+                      <div className="text-xs text-text-secondary uppercase tracking-wide mb-2">
+                        Distance
+                      </div>
+                      <input
+                        type="number"
+                        value={editingDistance}
+                        onChange={(e) => setEditingDistance(parseFloat(e.target.value))}
+                        className="w-full text-2xl font-bold text-accent bg-transparent text-center focus:outline-none"
+                        min="0"
+                        step="0.1"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-accent/20 rounded-xl p-4 text-center">
+                      <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">
+                        Distance
+                      </div>
+                      <div className="text-2xl font-bold text-accent">
+                        {customMode || hasCardioCustomSettings
+                          ? editingDistance
+                          : selectedCardioExercise.distanceMeters / 1000}
+                        km
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
 
               <div className="bg-surface/50 rounded-lg p-3 text-center">
                 <div className="text-xs text-text-secondary">Pace</div>
                 <div className="font-semibold text-text-primary">
-                  {customMode &&
+                  {(customMode || hasCardioCustomSettings) &&
                   selectedCardioExercise.distanceMeters &&
-                  customDistance > 0
+                  editingDistance > 0
                     ? (
-                        (customDistance * 1000) /
-                        (customDuration * 60)
+                        (editingDistance * 1000) /
+                        (editingDuration * 60)
                       ).toFixed(1)
                     : selectedCardioExercise.distanceMeters
                       ? (
@@ -540,6 +596,33 @@ export default function LogWorkoutPage({
                   <span className="text-text-secondary text-xs"> m/min</span>
                 </div>
               </div>
+
+              <button
+                onClick={() => {
+                  if (cardioEditMode) {
+                    setCustomMode(true);
+                    setCustomDuration(editingDuration);
+                    setCustomDistance(editingDistance);
+                    const newSettings = {
+                      ...customCardioSettings,
+                      [selectedCardioExercise.name]: {
+                        duration: editingDuration,
+                        distance: editingDistance,
+                      },
+                    };
+                    setCustomCardioSettings(newSettings);
+                    localStorage.setItem("customCardioSettings", JSON.stringify(newSettings));
+                  }
+                  setCardioEditMode(!cardioEditMode);
+                }}
+                className={`w-full mt-4 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 border-2 ${
+                  cardioEditMode
+                    ? "bg-primary text-white border-primary"
+                    : "bg-surface/50 text-text-primary border-border hover:border-primary"
+                }`}
+              >
+                {cardioEditMode ? "✓ Done" : "✏️ Edit"}
+              </button>
             </>
           )}
         </div>
