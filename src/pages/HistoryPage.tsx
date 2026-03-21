@@ -204,13 +204,8 @@ export default function HistoryPage({
     ).length;
 
     const weeklyTimeMinutes = workoutData
-      .filter((w) => new Date(w.date) >= weekAgo)
-      .reduce((total, w) => {
-        if ("durationSeconds" in w) {
-          return total + (w.durationSeconds || 0) / 60;
-        }
-        return total + 15;
-      }, 0);
+      .filter((w) => new Date(w.date) >= weekAgo && "durationSeconds" in w)
+      .reduce((total, w) => total + (w.durationSeconds || 0) / 60, 0);
 
     const exerciseCounts: Record<string, number> = {};
     workoutData.forEach((w) => {
@@ -311,20 +306,18 @@ export default function HistoryPage({
               <div className="text-xs text-text-secondary">Total</div>
             </div>
             <div className="bg-surface rounded-xl shadow-sm p-3 text-center">
-              <div className="text-2xl mb-1">
-                {dashboardStats.currentStreak > 0 ? "🔥" : "💤"}
-              </div>
+              <div className="text-2xl mb-1">🔥</div>
               <div className="text-xl font-bold text-accent">
                 {dashboardStats.currentStreak}
               </div>
               <div className="text-xs text-text-secondary">Streak</div>
             </div>
             <div className="bg-surface rounded-xl shadow-sm p-3 text-center">
-              <div className="text-2xl mb-1">⏱️</div>
+              <div className="text-2xl mb-1">🏃</div>
               <div className="text-xl font-bold text-primary">
                 {dashboardStats.weeklyTimeMinutes}m
               </div>
-              <div className="text-xs text-text-secondary">This Week</div>
+              <div className="text-xs text-text-secondary">Cardio This Week</div>
             </div>
             <div className="bg-surface rounded-xl shadow-sm p-3 text-center">
               <div className="text-2xl mb-1">💪</div>
