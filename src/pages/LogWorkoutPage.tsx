@@ -57,7 +57,24 @@ export default function LogWorkoutPage({
   const [customWeight, setCustomWeight] = useState(60);
   const [customDuration, setCustomDuration] = useState(30);
   const [customDistance, setCustomDistance] = useState(0);
-  const [rpe, setRpe] = useState(5);
+  const [editMode, setEditMode] = useState(false);
+  const [customExerciseSettings, setCustomExerciseSettings] = useState<Record<string, { sets: number; reps: number; weight: number }>>(() => {
+    const saved = localStorage.getItem("customExerciseSettings");
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const initialSettings = customExerciseSettings[STRENGTH_EXERCISES[0]!.name] || {
+    sets: STRENGTH_EXERCISES[0]!.sets.length,
+    reps: STRENGTH_EXERCISES[0]!.reps[0],
+    weight: STRENGTH_EXERCISES[0]!.weightKg[0],
+  };
+
+  const [editingSets, setEditingSets] = useState(initialSettings.sets);
+  const [editingReps, setEditingReps] = useState(initialSettings.reps);
+  const [editingWeight, setEditingWeight] = useState(initialSettings.weight);
+
+  const customSettings = customExerciseSettings[selectedStrengthExercise.name];
+  const hasCustomSettings = customSettings !== undefined;
 
   const handleSubmit = async () => {
     setIsSaving(true);
@@ -72,20 +89,22 @@ export default function LogWorkoutPage({
           workout = {
             id: Date.now().toString(),
             name: selectedStrengthExercise.name,
-            sets: customMode ? [customWeight, customWeight, customWeight] : selectedStrengthExercise.sets,
-            reps: customMode ? [10, 10, 10] : selectedStrengthExercise.reps,
-            weightKg: customMode ? [customWeight, customWeight, customWeight] : selectedStrengthExercise.weightKg,
-            rpe,
+            sets: customMode ? Array(editingSets).fill(editingSets) : selectedStrengthExercise.sets,
+            reps: customMode ? Array(editingSets).fill(editingReps) : selectedStrengthExercise.reps,
+            weightKg: customMode ? Array(editingSets).fill(editingWeight) : selectedStrengthExercise.weightKg,
             date: new Date(),
           };
         } else {
           workout = {
             id: Date.now().toString(),
             name: selectedCardioExercise.name,
-            durationSeconds: customMode ? customDuration * 60 : selectedCardioExercise.durationSeconds,
+            durationSeconds: customMode
+              ? customDuration * 60
+              : selectedCardioExercise.durationSeconds,
             distanceMeters:
-              customMode && customDistance > 0 ? customDistance * 1000 : selectedCardioExercise.distanceMeters,
-            rpe,
+              customMode && customDistance > 0
+                ? customDistance * 1000
+                : selectedCardioExercise.distanceMeters,
             date: new Date(),
           };
         }
@@ -116,8 +135,13 @@ export default function LogWorkoutPage({
           user_id: user.id,
           type: "cardio",
           date: new Date().toISOString().split("T")[0],
-          duration_minutes: customMode ? customDuration : Math.round(selectedCardioExercise.durationSeconds / 60),
-          distance_meters: customMode && customDistance > 0 ? customDistance * 1000 : selectedCardioExercise.distanceMeters || null,
+          duration_minutes: customMode
+            ? customDuration
+            : Math.round(selectedCardioExercise.durationSeconds / 60),
+          distance_meters:
+            customMode && customDistance > 0
+              ? customDistance * 1000
+              : selectedCardioExercise.distanceMeters || null,
           notes: null,
         };
       }
@@ -136,10 +160,13 @@ export default function LogWorkoutPage({
           .insert({
             workout_id: workout.id,
             exercise_name: selectedStrengthExercise.name,
-            sets: customMode ? [customWeight, customWeight, customWeight] : selectedStrengthExercise.sets,
-            reps: customMode ? [10, 10, 10] : selectedStrengthExercise.reps,
-            weight_kg: customMode ? [customWeight, customWeight, customWeight] : selectedStrengthExercise.weightKg,
-            rpe: rpe,
+            sets: customMode
+              ? Array(editingSets).fill(editingSets)
+              : selectedStrengthExercise.sets,
+            reps: customMode ? Array(editingSets).fill(editingReps) : selectedStrengthExercise.reps,
+            weight_kg: customMode
+              ? Array(editingSets).fill(editingWeight)
+              : selectedStrengthExercise.weightKg,
           });
 
         if (exercisesError) throw exercisesError;
@@ -149,10 +176,14 @@ export default function LogWorkoutPage({
           .insert({
             workout_id: workout.id,
             exercise_name: selectedCardioExercise.name,
-            distance_meters: customMode && customDistance > 0 ? customDistance * 1000 : selectedCardioExercise.distanceMeters || null,
-            duration_seconds: customMode ? customDuration * 60 : selectedCardioExercise.durationSeconds,
+            distance_meters:
+              customMode && customDistance > 0
+                ? customDistance * 1000
+                : selectedCardioExercise.distanceMeters || null,
+            duration_seconds: customMode
+              ? customDuration * 60
+              : selectedCardioExercise.durationSeconds,
             avg_heart_rate: null,
-            rpe: rpe,
           });
 
         if (exercisesError) throw exercisesError;
@@ -237,10 +268,14 @@ export default function LogWorkoutPage({
             <button
               key={idx}
               onClick={() => {
+                setEditMode(false);
                 if (workoutType === "strength") {
-                  setSelectedStrengthExercise(
-                    exercise as StrengthExerciseTemplate,
-                  );
+                  const strengthEx = exercise as StrengthExerciseTemplate;
+                  setSelectedStrengthExercise(strengthEx);
+                  const customSettings = customExerciseSettings[strengthEx.name];
+                  setEditingSets(customSettings?.sets ?? strengthEx.sets.length);
+                  setEditingReps(customSettings?.reps ?? strengthEx.reps[0]);
+                  setEditingWeight(customSettings?.weight ?? strengthEx.weightKg[0]);
                 } else {
                   setSelectedCardioExercise(exercise as CardioExerciseTemplate);
                 }
@@ -322,23 +357,6 @@ export default function LogWorkoutPage({
           </div>
         )}
 
-        <div className="flex items-center gap-2 mt-4">
-          <div className="flex-1">
-            <label className="text-xs text-text-secondary">RPE</label>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={rpe}
-              onChange={(e) => setRpe(parseInt(e.target.value))}
-              className="w-full h-2 bg-surface/50 rounded-lg appearance-none cursor-pointer accent-primary"
-            />
-          </div>
-          <div className="text-xs text-text-secondary flex items-center gap-1">
-            <span>Easy</span>
-            <span>Hard</span>
-          </div>
-        </div>
       </div>
 
       <div className="bg-surface rounded-2xl shadow-sm p-6">
@@ -355,38 +373,117 @@ export default function LogWorkoutPage({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-primary/10 rounded-xl p-4 text-center">
-                  <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Sets</div>
-                  <div className="text-2xl font-bold text-primary">
-                    {customMode ? 3 : selectedStrengthExercise.sets.length}
+                {editMode ? (
+                  <>
+                    <div className="bg-primary/20 rounded-xl p-4">
+                      <div className="text-xs text-text-secondary uppercase tracking-wide mb-2">
+                        Sets
+                      </div>
+                      <input
+                        type="number"
+                        value={editingSets}
+                        onChange={(e) => setEditingSets(parseInt(e.target.value))}
+                        className="w-full text-2xl font-bold text-primary bg-transparent text-center focus:outline-none"
+                        min="1"
+                      />
+                    </div>
+                    <div className="bg-accent/30 rounded-xl p-4">
+                      <div className="text-xs text-text-secondary uppercase tracking-wide mb-2">
+                        Reps
+                      </div>
+                      <input
+                        type="number"
+                        value={editingReps}
+                        onChange={(e) => setEditingReps(parseInt(e.target.value))}
+                        className="w-full text-2xl font-bold text-accent bg-transparent text-center focus:outline-none"
+                        min="1"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="bg-primary/10 rounded-xl p-4 text-center">
+                      <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">
+                        Sets
+                      </div>
+                      <div className="text-2xl font-bold text-primary">
+                        {customMode || hasCustomSettings ? editingSets : selectedStrengthExercise.sets.length}
+                      </div>
+                    </div>
+                    <div className="bg-accent/20 rounded-xl p-4 text-center">
+                      <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">
+                        Reps
+                      </div>
+                      <div className="text-2xl font-bold text-accent">
+                        {customMode || hasCustomSettings ? editingReps : selectedStrengthExercise.reps[0]}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                {editMode ? (
+                  <div className="bg-surface/70 rounded-lg p-3">
+                    <div className="text-xs text-text-secondary mb-2">Weight</div>
+                    <input
+                      type="number"
+                      value={editingWeight}
+                      onChange={(e) => setEditingWeight(parseFloat(e.target.value))}
+                      className="w-full font-semibold text-text-primary bg-transparent text-center focus:outline-none"
+                      step="0.5"
+                    />
                   </div>
-                </div>
-                <div className="bg-accent/20 rounded-xl p-4 text-center">
-                  <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Reps</div>
-                  <div className="text-2xl font-bold text-accent">
-                    {customMode ? 10 : selectedStrengthExercise.reps[0]}
+                ) : (
+                  <div className="bg-surface/50 rounded-lg p-3 text-center">
+                    <div className="text-xs text-text-secondary">Weight</div>
+                    <div className="font-semibold text-text-primary">
+                      {customMode || hasCustomSettings
+                        ? editingWeight
+                        : selectedStrengthExercise.weightKg[0]}
+                      kg
+                    </div>
+                  </div>
+                )}
+                <div className="bg-surface/50 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">Total Reps</div>
+                  <div className="font-semibold text-text-primary">
+                    {customMode || hasCustomSettings
+                      ? editingSets * editingReps
+                      : selectedStrengthExercise.reps.reduce(
+                          (a, b) => a + b,
+                          0,
+                        )}
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 mt-3">
-                <div className="bg-surface/50 rounded-lg p-3 text-center">
-                  <div className="text-xs text-text-secondary">Weight</div>
-                  <div className="font-semibold text-text-primary">
-                    {customMode ? customWeight : selectedStrengthExercise.weightKg[0]}kg
-                  </div>
-                </div>
-                <div className="bg-surface/50 rounded-lg p-3 text-center">
-                  <div className="text-xs text-text-secondary">Total Reps</div>
-                  <div className="font-semibold text-text-primary">
-                    {customMode ? 30 : selectedStrengthExercise.reps.reduce((a, b) => a + b, 0)}
-                  </div>
-                </div>
-                <div className="bg-surface/50 rounded-lg p-3 text-center">
-                  <div className="text-xs text-text-secondary">RPE</div>
-                  <div className="font-semibold text-text-primary">{rpe}/10</div>
-                </div>
-              </div>
+              <button
+                onClick={() => {
+                  if (editMode) {
+                    setCustomMode(true);
+                    setCustomWeight(editingWeight);
+                    const newSettings = {
+                      ...customExerciseSettings,
+                      [selectedStrengthExercise.name]: {
+                        sets: editingSets,
+                        reps: editingReps,
+                        weight: editingWeight,
+                      },
+                    };
+                    setCustomExerciseSettings(newSettings);
+                    localStorage.setItem("customExerciseSettings", JSON.stringify(newSettings));
+                  }
+                  setEditMode(!editMode);
+                }}
+                className={`w-full mt-4 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 border-2 ${
+                  editMode
+                    ? "bg-primary text-white border-primary"
+                    : "bg-surface/50 text-text-primary border-border hover:border-primary"
+                }`}
+              >
+                {editMode ? "✓ Done" : "✏️ Edit"}
+              </button>
             </>
           ) : (
             <>
@@ -398,36 +495,49 @@ export default function LogWorkoutPage({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-primary/10 rounded-xl p-4 text-center">
-                  <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Duration</div>
+                  <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">
+                    Duration
+                  </div>
                   <div className="text-2xl font-bold text-primary">
-                    {customMode ? customDuration : Math.round(selectedCardioExercise.durationSeconds / 60)}min
+                    {customMode
+                      ? customDuration
+                      : Math.round(selectedCardioExercise.durationSeconds / 60)}
+                    min
                   </div>
                 </div>
                 {selectedCardioExercise.distanceMeters && (
                   <div className="bg-accent/20 rounded-xl p-4 text-center">
-                    <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Distance</div>
+                    <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">
+                      Distance
+                    </div>
                     <div className="text-2xl font-bold text-accent">
-                      {customMode && customDistance > 0 ? customDistance : selectedCardioExercise.distanceMeters / 1000}km
+                      {customMode && customDistance > 0
+                        ? customDistance
+                        : selectedCardioExercise.distanceMeters / 1000}
+                      km
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <div className="bg-surface/50 rounded-lg p-3 text-center">
-                  <div className="text-xs text-text-secondary">RPE</div>
-                  <div className="font-semibold text-text-primary">{rpe}/10</div>
-                </div>
-                <div className="bg-surface/50 rounded-lg p-3 text-center">
-                  <div className="text-xs text-text-secondary">Pace</div>
-                  <div className="font-semibold text-text-primary">
-                    {customMode && selectedCardioExercise.distanceMeters && customDistance > 0
-                      ? (customDistance * 1000 / (customDuration * 60)).toFixed(1)
-                      : selectedCardioExercise.distanceMeters
-                        ? (selectedCardioExercise.distanceMeters / selectedCardioExercise.durationSeconds * 60).toFixed(1)
-                        : '-'}
-                    <span className="text-text-secondary text-xs"> m/min</span>
-                  </div>
+              <div className="bg-surface/50 rounded-lg p-3 text-center">
+                <div className="text-xs text-text-secondary">Pace</div>
+                <div className="font-semibold text-text-primary">
+                  {customMode &&
+                  selectedCardioExercise.distanceMeters &&
+                  customDistance > 0
+                    ? (
+                        (customDistance * 1000) /
+                        (customDuration * 60)
+                      ).toFixed(1)
+                    : selectedCardioExercise.distanceMeters
+                      ? (
+                          (selectedCardioExercise.distanceMeters /
+                            selectedCardioExercise.durationSeconds) *
+                          60
+                        ).toFixed(1)
+                      : "-"}
+                  <span className="text-text-secondary text-xs"> m/min</span>
                 </div>
               </div>
             </>
