@@ -348,76 +348,85 @@ export default function LogWorkoutPage({
         <div className="space-y-4">
           {workoutType === "strength" ? (
             <>
-              <div className="bg-primary/10 rounded-xl p-4">
-                <div className="text-center">
-                  <div className="text-xl mb-2">💪</div>
-                  <h3 className="text-xl font-bold text-primary">
-                    {selectedStrengthExercise.name}
-                  </h3>
-                  <p className="text-xl text-primary mt-2">
-                    {customMode ? customWeight : selectedStrengthExercise.weightKg[0]}kg × {customMode ? 3 : selectedStrengthExercise.sets.length} × {customMode ? 10 : selectedStrengthExercise.reps[0]} reps
-                  </p>
+              <div className="text-center mb-3">
+                <h3 className="text-xl font-bold text-primary">
+                  {selectedStrengthExercise.name}
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-primary/10 rounded-xl p-4 text-center">
+                  <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Sets</div>
+                  <div className="text-2xl font-bold text-primary">
+                    {customMode ? 3 : selectedStrengthExercise.sets.length}
+                  </div>
+                </div>
+                <div className="bg-accent/20 rounded-xl p-4 text-center">
+                  <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Reps</div>
+                  <div className="text-2xl font-bold text-accent">
+                    {customMode ? 10 : selectedStrengthExercise.reps[0]}
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-accent/20 rounded-lg p-3 mt-3">
-                <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                  <div>
-                    <span className="text-text-secondary">Total Sets:</span>
-                    <span className="font-semibold ml-1">
-                      {customMode ? 3 : selectedStrengthExercise.sets.length}
-                    </span>
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                <div className="bg-surface/50 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">Weight</div>
+                  <div className="font-semibold text-text-primary">
+                    {customMode ? customWeight : selectedStrengthExercise.weightKg[0]}kg
                   </div>
-                  <div>
-                    <span className="text-text-secondary">Total Reps:</span>
-                    <span className="font-semibold ml-1">
-                      {customMode ? 30 : selectedStrengthExercise.reps.reduce((a, b) => a + b, 0)}
-                    </span>
+                </div>
+                <div className="bg-surface/50 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">Total Reps</div>
+                  <div className="font-semibold text-text-primary">
+                    {customMode ? 30 : selectedStrengthExercise.reps.reduce((a, b) => a + b, 0)}
                   </div>
-                  <div>
-                    <span className="text-text-secondary">RPE:</span>
-                    <span className="font-semibold ml-1">
-                      {rpe}/10
-                    </span>
-                  </div>
+                </div>
+                <div className="bg-surface/50 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">RPE</div>
+                  <div className="font-semibold text-text-primary">{rpe}/10</div>
                 </div>
               </div>
             </>
           ) : (
             <>
-              <div className="bg-primary/10 rounded-xl p-4">
-                <div className="text-center">
-                  <div className="text-xl mb-2">🏃</div>
-                  <h3 className="text-xl font-bold text-primary">
-                    {selectedCardioExercise.name}
-                  </h3>
-                  <p className="text-xl text-primary mt-2">
-                    {customMode ? customDuration : Math.round(selectedCardioExercise.durationSeconds / 60)}min
-                    {selectedCardioExercise.distanceMeters && (
-                      <span> • {customMode && customDistance > 0 ? customDistance : selectedCardioExercise.distanceMeters / 1000}km</span>
-                    )}
-                  </p>
-                </div>
+              <div className="text-center mb-3">
+                <h3 className="text-xl font-bold text-primary">
+                  {selectedCardioExercise.name}
+                </h3>
               </div>
 
-              <div className="bg-accent/20 rounded-lg p-3 mt-3">
-                <div className="grid grid-cols-2 gap-2 text-center text-sm">
-                  <div>
-                    <span className="text-text-secondary">RPE:</span>
-                    <span className="font-semibold ml-1">
-                      {rpe}/10
-                    </span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-primary/10 rounded-xl p-4 text-center">
+                  <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Duration</div>
+                  <div className="text-2xl font-bold text-primary">
+                    {customMode ? customDuration : Math.round(selectedCardioExercise.durationSeconds / 60)}min
                   </div>
-                  <div>
-                    <span className="text-text-secondary">Pace:</span>
-                    <span className="font-semibold ml-1">
-                      {customMode && selectedCardioExercise.distanceMeters && customDistance > 0
-                        ? (customDistance * 1000 / (customDuration * 60)).toFixed(1)
-                        : selectedCardioExercise.distanceMeters
-                          ? (selectedCardioExercise.distanceMeters / selectedCardioExercise.durationSeconds * 60).toFixed(1)
-                          : '-'}
-                    </span>
-                    <span className="text-text-secondary"> m/min</span>
+                </div>
+                {selectedCardioExercise.distanceMeters && (
+                  <div className="bg-accent/20 rounded-xl p-4 text-center">
+                    <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Distance</div>
+                    <div className="text-2xl font-bold text-accent">
+                      {customMode && customDistance > 0 ? customDistance : selectedCardioExercise.distanceMeters / 1000}km
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="bg-surface/50 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">RPE</div>
+                  <div className="font-semibold text-text-primary">{rpe}/10</div>
+                </div>
+                <div className="bg-surface/50 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">Pace</div>
+                  <div className="font-semibold text-text-primary">
+                    {customMode && selectedCardioExercise.distanceMeters && customDistance > 0
+                      ? (customDistance * 1000 / (customDuration * 60)).toFixed(1)
+                      : selectedCardioExercise.distanceMeters
+                        ? (selectedCardioExercise.distanceMeters / selectedCardioExercise.durationSeconds * 60).toFixed(1)
+                        : '-'}
+                    <span className="text-text-secondary text-xs"> m/min</span>
                   </div>
                 </div>
               </div>
