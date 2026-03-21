@@ -2,6 +2,16 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 
+interface DashboardStats {
+  totalWorkouts: number;
+  currentStreak: number;
+  weeklyWorkouts: number;
+  weeklyTimeMinutes: number;
+  personalRecordsThisWeek: number;
+  mostTrainedExercise: { name: string; count: number } | null;
+  weeklyActivity: { day: string; strength: number; cardio: number }[];
+}
+
 interface HistoryPageProps {
   onBack: () => void;
   onWorkoutDeleted: () => void;
@@ -14,6 +24,7 @@ export default function HistoryPage({
   const { user } = useAuth();
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
     async function loadWorkouts() {
@@ -160,6 +171,99 @@ export default function HistoryPage({
     });
   };
 
+  const calculateDashboardStats = (workoutData: any[]): DashboardStats => {
+    const totalWorkouts = workoutData.length;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let currentStreak = 0;
+    let checkDate = new Date(today);
+
+    for (let i = 0; i < 365; i++) {
+      const dateStr = checkDate.toISOString().split("T")[0];
+      const hasWorkoutOnDate = workoutData.some(
+        (w) => new Date(w.date).toISOString().split("T")[0] === dateStr
+      );
+
+      if (hasWorkoutOnDate) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else if (i === 0) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const weeklyWorkouts = workoutData.filter(
+      (w) => new Date(w.date) >= weekAgo
+    ).length;
+
+    const weeklyTimeMinutes = workoutData
+      .filter((w) => new Date(w.date) >= weekAgo)
+      .reduce((total, w) => {
+        if ("durationSeconds" in w) {
+          return total + (w.durationSeconds || 0) / 60;
+        }
+        return total + 15;
+      }, 0);
+
+    const exerciseCounts: Record<string, number> = {};
+    workoutData.forEach((w) => {
+      exerciseCounts[w.name] = (exerciseCounts[w.name] || 0) + 1;
+    });
+
+    const mostTrainedExercise =
+      Object.entries(exerciseCounts).sort((a, b) => b[1] - a[1])[0] || null;
+
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const weeklyActivity = days.map((day) => {
+      const dayIndex = days.indexOf(day);
+      const dayWorkouts = workoutData.filter(
+        (w) => new Date(w.date).getDay() === dayIndex && new Date(w.date) >= weekAgo
+      );
+
+      const strength = dayWorkouts.filter((w) => "sets" in w).length;
+      const cardio = dayWorkouts.filter((w) => "durationSeconds" in w).length;
+
+      return { day, strength, cardio };
+    });
+
+    return {
+      totalWorkouts,
+      currentStreak,
+      weeklyWorkouts,
+      weeklyTimeMinutes: Math.round(weeklyTimeMinutes),
+      personalRecordsThisWeek: 0,
+      mostTrainedExercise: mostTrainedExercise
+        ? { name: mostTrainedExercise[0], count: mostTrainedExercise[1] }
+        : null,
+      weeklyActivity,
+    };
+  };
+
+  useEffect(() => {
+    if (!loading && workouts.length > 0) {
+      setDashboardStats(calculateDashboardStats(workouts));
+    } else if (!loading) {
+      setDashboardStats({
+        totalWorkouts: 0,
+        currentStreak: 0,
+        weeklyWorkouts: 0,
+        weeklyTimeMinutes: 0,
+        personalRecordsThisWeek: 0,
+        mostTrainedExercise: null,
+        weeklyActivity: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+          (day) => ({ day, strength: 0, cardio: 0 })
+        ),
+      });
+    }
+  }, [workouts, loading]);
+
   if (loading) {
     return (
       <div className="min-h-screen px-4 py-6 space-y-6">
@@ -194,6 +298,111 @@ export default function HistoryPage({
         </button>
         <h1 className="text-xl font-bold text-text-primary">Workout History</h1>
       </div>
+
+      {dashboardStats && (
+        <>
+          {/* Quick Stats Row */}
+          <div className="grid grid-cols-4 gap-3">
+            <div className="bg-surface rounded-xl shadow-sm p-3 text-center">
+              <div className="text-2xl mb-1">📊</div>
+              <div className="text-xl font-bold text-primary">
+                {dashboardStats.totalWorkouts}
+              </div>
+              <div className="text-xs text-text-secondary">Total</div>
+            </div>
+            <div className="bg-surface rounded-xl shadow-sm p-3 text-center">
+              <div className="text-2xl mb-1">
+                {dashboardStats.currentStreak > 0 ? "🔥" : "💤"}
+              </div>
+              <div className="text-xl font-bold text-accent">
+                {dashboardStats.currentStreak}
+              </div>
+              <div className="text-xs text-text-secondary">Streak</div>
+            </div>
+            <div className="bg-surface rounded-xl shadow-sm p-3 text-center">
+              <div className="text-2xl mb-1">⏱️</div>
+              <div className="text-xl font-bold text-primary">
+                {dashboardStats.weeklyTimeMinutes}m
+              </div>
+              <div className="text-xs text-text-secondary">This Week</div>
+            </div>
+            <div className="bg-surface rounded-xl shadow-sm p-3 text-center">
+              <div className="text-2xl mb-1">💪</div>
+              <div className="text-xl font-bold text-primary">
+                {dashboardStats.weeklyWorkouts}
+              </div>
+              <div className="text-xs text-text-secondary">Week Workouts</div>
+            </div>
+          </div>
+
+          {/* Weekly Activity Chart */}
+          <div className="bg-surface rounded-2xl shadow-sm p-4">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-4">
+              Weekly Activity
+            </h2>
+            <div className="flex items-end justify-between gap-2 h-32">
+              {dashboardStats.weeklyActivity.map((day, idx) => {
+                const total = day.strength + day.cardio;
+                const maxBarHeight = 100;
+                const strengthHeight = (day.strength / 5) * maxBarHeight;
+                const cardioHeight = (day.cardio / 5) * maxBarHeight;
+                const isToday = new Date().getDay() === idx;
+
+                return (
+                  <div key={day.day} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="flex items-end gap-1 h-full w-full justify-center">
+                      {day.strength > 0 && (
+                        <div
+                          className="w-3 bg-primary rounded-t"
+                          style={{ height: `${strengthHeight}px` }}
+                          title={`${day.strength} strength`}
+                        />
+                      )}
+                      {day.cardio > 0 && (
+                        <div
+                          className="w-3 bg-accent rounded-t"
+                          style={{ height: `${cardioHeight}px` }}
+                          title={`${day.cardio} cardio`}
+                        />
+                      )}
+                      {total === 0 && (
+                        <div className="w-3 h-2 bg-surface/30 rounded" />
+                      )}
+                    </div>
+                    <span
+                      className={`text-xs ${
+                        isToday ? "text-primary font-bold" : "text-text-secondary"
+                      }`}
+                    >
+                      {day.day}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Most Trained Exercise */}
+          {dashboardStats.mostTrainedExercise && (
+            <div className="bg-surface rounded-xl shadow-sm p-4">
+              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-3">
+                Most Trained
+              </h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-lg font-bold text-text-primary">
+                    {dashboardStats.mostTrainedExercise.name}
+                  </div>
+                  <div className="text-sm text-text-secondary">
+                    {dashboardStats.mostTrainedExercise.count} times
+                  </div>
+                </div>
+                <div className="text-3xl">🏆</div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Workout List */}
       {workouts.length === 0 ? (
